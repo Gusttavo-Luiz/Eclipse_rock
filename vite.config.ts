@@ -13,11 +13,9 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    proxy: {
-      "/api": "http://localhost:3001",
-      "/uploads": "http://localhost:3001",
-      "/sitemap.xml": "http://localhost:3001",
-      "/robots.txt": "http://localhost:3001",
-    },
+    // changeOrigin: false mantém o Host original (localhost:5173), que a proteção CSRF compara com o Origin.
+    proxy: Object.fromEntries(
+      ["/api", "/uploads", "/sitemap.xml", "/robots.txt"].map((p) => [p, { target: "http://localhost:3001", changeOrigin: false }]),
+    ),
   },
 });
