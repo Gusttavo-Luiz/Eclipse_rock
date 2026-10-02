@@ -309,6 +309,12 @@ export const userUpdateInput = z.object({
     .optional()
     .transform((v) => (v ? v : undefined)),
 });
+export const forgotPasswordInput = z.object({ email });
+export const resetPasswordInput = z.object({
+  token: z.string().min(20, "Link inválido.").max(200, "Link inválido."),
+  newPassword: password,
+});
+
 export const passwordChangeInput = z.object({
   currentPassword: z.string().min(1, "Informe a senha atual."),
   newPassword: password,

@@ -43,6 +43,7 @@ O site de referência (`eclipse-rock-hub.base44.app`) é uma aplicação renderi
 
 **Painel** (`/admin`)
 - **Login:** sessão em cookie `httpOnly`; o painel tem dois papéis, **admin** e **editor**.
+- **Esqueci minha senha:** link de uso único por e-mail, válido por 60 minutos (aparece no login quando o envio de e-mail está configurado).
 - **Visão geral:** contagens reais, próximo show, solicitações recentes e log de atividade.
 - **Shows:**
   - criar, editar, excluir e buscar;
@@ -69,7 +70,7 @@ O site de referência (`eclipse-rock-hub.base44.app`) é uma aplicação renderi
 | Imagens | `sharp`: valida o conteúdo real, remove EXIF/GPS, gera WebP em 480/960/1600/2400 px |
 | Validação | `zod`, com os **mesmos schemas** no cliente e no servidor (`shared/schemas.ts`) |
 | E-mail | Resend (API HTTP) ou SMTP (`nodemailer`), escolhido pelas variáveis de ambiente |
-| Testes | Vitest + Supertest (29 testes de API, segurança, persistência e avisos por e-mail) |
+| Testes | Vitest + Supertest (38 testes de API, segurança, persistência, avisos por e-mail e recuperação de senha) |
 
 **Por que SQLite?** Para um site de banda, um servidor só com um arquivo de banco é a solução mais simples e robusta de operar: sem serviço extra, backup é copiar a pasta `data/`. O acesso ao banco está concentrado em `server/src/repo.ts` e nas rotas, o que facilita migrar para PostgreSQL no futuro, se o volume exigir.
 
@@ -90,10 +91,12 @@ server/
   src/uploads.ts        processamento seguro de imagens
   src/mailer.ts         envio de e-mail (Resend ou SMTP)
   src/notifications.ts  aviso de nova solicitação para a equipe
+  src/passwordReset.ts  links de recuperação de senha e e-mails da conta
   src/seo.ts            meta tags, Open Graph, JSON-LD, sitemap, robots
   src/cli.ts            criação de administrador
   tests/api.test.ts
   tests/notifications.test.ts
+  tests/passwordReset.test.ts
 shared/                 schemas e tipos usados pelos dois lados
 ```
 
@@ -103,6 +106,7 @@ shared/                 schemas e tipos usados pelos dois lados
 |---|---|
 | `users` | contas do painel |
 | `sessions` | sessões de login |
+| `password_resets` | links de recuperação de senha (só o hash do token) |
 | `uploads` | imagens enviadas |
 | `events` | shows |
 | `band_members` | integrantes |
@@ -137,7 +141,7 @@ npm run build       # build de produção
 
 **Executado antes da entrega:**
 
-- **Typecheck e testes:** typecheck sem erros, build de produção ok e **29/29 testes** passando. Os testes cobrem:
+- **Typecheck e testes:** typecheck sem erros, build de produção ok e **38/38 testes** passando. Os testes cobrem:
   - bloqueio de rotas sem login e permissões por papel;
   - CSRF, origem inválida e desativação de usuário com encerramento de sessão;
   - validação (links `javascript:`, UF, telefone, e-mail, data) e campo-armadilha;
@@ -146,7 +150,8 @@ npm run build       # build de produção
   - upload que rejeita arquivo falso, SVG e envio sem login;
   - escape de HTML no SEO, sitemap e robots;
   - limite de tentativas de login;
-  - aviso por e-mail: destinatários, fallback para o e-mail comercial, escape de HTML, falha do provedor sem perder a solicitação, reenvio e e-mail de teste.
+  - aviso por e-mail: destinatários, fallback para o e-mail comercial, escape de HTML, falha do provedor sem perder a solicitação, reenvio e e-mail de teste;
+  - recuperação de senha: fluxo completo, uso único, expiração, link novo invalida o anterior, limite por hora e por IP, conta inativa, resposta igual para e-mail cadastrado ou não.
 - **Teste no navegador** (Chromium, 1440 px e 390 px, com dados de teste em banco temporário):
   - menu mobile fecha após a seleção;
   - erros do formulário recebem foco;
@@ -198,6 +203,23 @@ A cada pedido de contratação enviado pelo site, a equipe recebe um e-mail com 
 
 **No painel:** em **Configurações → Avisos de novas solicitações**, informe até 5 e-mails que recebem os avisos (se ficar vazio, usa o e-mail comercial), salve e clique em **Enviar e-mail de teste**. Ao subir, o servidor informa no log se o envio está ativo.
 
+## Recuperação de senha
+
+Com o envio de e-mail configurado, a tela de login mostra **Esqueci minha senha**:
+
+1. A pessoa informa o e-mail e recebe um link (válido por **60 minutos**, **uso único**). A resposta é a mesma para e-mails cadastrados ou não, para não revelar quem tem conta.
+2. O link abre a tela **Nova senha**. Ao salvar, todas as sessões da conta são encerradas e a pessoa entra de novo com a nova senha.
+3. Um e-mail avisa que a senha foi alterada (também enviado quando a senha é trocada em **Minha conta**).
+
+Proteções:
+- o banco guarda só o hash do token;
+- o token vai no fragmento da URL (`#token=…`), que não é enviado a servidores nem vaza pelo Referer;
+- um link novo invalida o anterior;
+- no máximo 3 links por conta por hora, mais um limite de pedidos por IP;
+- contas desativadas não recebem nem usam links.
+
+Em produção, os links usam `SITE_URL` (ou o "Endereço do site" das Configurações), nunca o cabeçalho Host da requisição. Sem e-mail configurado, um admin redefine a senha em **Usuários** ou pelo comando `create-admin`, que atualiza um usuário existente.
+
 > WhatsApp: o aviso automático por WhatsApp exige a API oficial do WhatsApp Business (Meta), com conta comercial verificada e modelos de mensagem aprovados. Por isso o aviso é por e-mail; no celular, a notificação do app de e-mail cumpre o mesmo papel.
 
 O servidor roda como **uma instância**. Os limites de requisição ficam em memória; para escalar horizontalmente, troque-os por Redis.
@@ -219,4 +241,3 @@ O servidor roda como **uma instância**. Os limites de requisição ficam em mem
 - **Ativar o aviso por e-mail em produção:** o código está pronto; falta criar a conta no provedor (Resend ou SMTP), verificar o domínio e definir as variáveis (veja "Aviso de nova solicitação por e-mail").
 - **Conteúdo da referência:** textos e imagens do site original que não puderam ser lidos devem ser incluídos pelo painel.
 - **Instrumentos dos integrantes, YouTube, Spotify, e-mail e telefone oficiais:** aguardam confirmação da banda.
-- **Recuperação de senha por e-mail:** pode reaproveitar o envio de e-mail (`server/src/mailer.ts`). Até lá, um admin redefine a senha em **Usuários** ou pelo comando `create-admin`, que atualiza um usuário existente.

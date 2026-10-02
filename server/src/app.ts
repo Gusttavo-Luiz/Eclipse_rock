@@ -69,7 +69,7 @@ export function createApp(db: DB, opts: { serveClient?: boolean; mailer?: Mailer
   const api = express.Router();
   api.use(loadUser(db));
   api.use("/public", publicRoutes(db, mailer));
-  api.use("/auth", csrfGuard, authRoutes(db));
+  api.use("/auth", csrfGuard, authRoutes(db, mailer));
   api.use("/admin", csrfGuard, adminRoutes(db, mailer));
   api.use((_req, _res, next) => next(new HttpError(404, "Rota não encontrada.")));
   app.use("/api", api);

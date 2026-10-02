@@ -208,6 +208,21 @@ const migrations: { name: string; sql: string }[] = [
       ALTER TABLE booking_requests ADD COLUMN notified_at TEXT;
     `,
   },
+  {
+    // Links de recuperação de senha: só o hash do token é guardado; uso único e validade curta.
+    name: "004_password_resets",
+    sql: `
+      CREATE TABLE password_resets (
+        id          INTEGER PRIMARY KEY,
+        user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token_hash  TEXT NOT NULL UNIQUE,
+        expires_at  TEXT NOT NULL,
+        used_at     TEXT,
+        created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+      );
+      CREATE INDEX idx_password_resets_user ON password_resets(user_id, created_at);
+    `,
+  },
 ];
 
 export function openDb(file = path.join(config.dataDir, "eclipse-rock.sqlite")): DB {

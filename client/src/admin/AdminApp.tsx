@@ -3,6 +3,7 @@ import { LoadingState } from "../components/States";
 import { AdminLayout } from "./AdminLayout";
 import { AuthProvider, useAuth } from "./auth";
 import { LoginPage } from "./LoginPage";
+import { ForgotPasswordPage, ResetPasswordPage } from "./PasswordResetPages";
 import { AccountPage } from "./pages/AccountPage";
 import { BookingDetail, BookingsAdmin } from "./pages/BookingsAdmin";
 import { Dashboard } from "./pages/Dashboard";
@@ -34,6 +35,8 @@ export default function AdminApp() {
     <AuthProvider>
       <Routes>
         <Route path="login" element={<LoginPage />} />
+        <Route path="esqueci-senha" element={<ForgotPasswordPage />} />
+        <Route path="redefinir-senha" element={<ResetPasswordPage />} />
         <Route
           element={
             <RequireAuth>

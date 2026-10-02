@@ -38,7 +38,7 @@ export async function verifyPassword(password: string, stored: string): Promise<
 let dummyHash: Promise<string> | null = null;
 export const getDummyHash = () => (dummyHash ??= hashPassword("dummy-password-0"));
 
-const sha256 = (v: string) => crypto.createHash("sha256").update(v).digest("hex");
+export const sha256 = (v: string) => crypto.createHash("sha256").update(v).digest("hex");
 
 export interface AuthUser {
   id: number;
