@@ -14,7 +14,7 @@
     "build": "npm run build:client && npm run build:server",
     "build:client": "vite build",
     "build:server": "esbuild server/src/index.ts server/src/cli.ts --bundle --platform=node --format=esm --target=node20 --packages=external --outdir=dist/server",
-    "start": "NODE_ENV=production node dist/server/index.js",
+    "start": "NODE_ENV=production exec node dist/server/index.js",
     "create-admin": "tsx server/src/cli.ts create-admin",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p server/tsconfig.json --noEmit",
     "test": "vitest run"

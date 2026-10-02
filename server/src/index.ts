@@ -1,4 +1,5 @@
 import { createApp } from "./app";
+import { bootstrapAdmin } from "./bootstrap";
 import { assertProductionConfig, config } from "./config";
 import { openDb } from "./db";
 import { createMailer } from "./mailer";
@@ -16,7 +17,12 @@ const server = app.listen(config.port, () => {
       : "Avisos por e-mail desligados (defina MAIL_FROM e RESEND_API_KEY ou SMTP_HOST para ativar).",
   );
   const users = (db.prepare("SELECT COUNT(*) n FROM users").get() as { n: number }).n;
-  if (!users) console.log('Nenhum usuário administrador. Crie um com: npm run create-admin -- --email voce@exemplo.com --name "Seu nome"');
+  if (!users && !config.bootstrapAdmin.email) {
+    console.log(
+      'Nenhum usuário administrador. Defina ADMIN_EMAIL (convite por e-mail) ou rode: npm run create-admin -- --email voce@exemplo.com --name "Seu nome"',
+    );
+  }
+  void bootstrapAdmin(db, mailer);
 });
 
 function shutdown() {

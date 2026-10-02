@@ -14,7 +14,10 @@ export const config = {
   /** Diretório persistente: banco SQLite + uploads. Em produção, aponte para um volume. */
   dataDir: path.resolve(env.DATA_DIR ?? "data"),
   /** URL pública do site (usada em canonical, sitemap e Open Graph). Sobrepõe a configuração do painel se definida. */
-  siteUrl: env.SITE_URL?.replace(/\/$/, "") || null,
+  // No Render, RENDER_EXTERNAL_URL (https://<serviço>.onrender.com) vale até o domínio próprio ser configurado.
+  siteUrl: (env.SITE_URL || env.RENDER_EXTERNAL_URL)?.replace(/\/$/, "") || null,
+  /** Primeiro administrador: recebe um convite por e-mail ao subir o servidor enquanto ninguém consegue entrar no painel. */
+  bootstrapAdmin: { email: env.ADMIN_EMAIL?.trim().toLowerCase() ?? "", name: env.ADMIN_NAME?.trim() ?? "" },
   /** Origens aceitas em requisições que alteram dados (proteção CSRF). Separe por vírgula. */
   allowedOrigins: (env.ALLOWED_ORIGINS ?? "")
     .split(",")

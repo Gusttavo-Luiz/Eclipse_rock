@@ -130,7 +130,8 @@ const ROLE_TEXT = { admin: "administrador(a)", editor: "editor(a)" } as const;
 
 export function inviteEmail(
   user: ResetUser & { role: "admin" | "editor" },
-  invitedBy: string,
+  /** Nome de quem convidou; null no convite automático do primeiro administrador. */
+  invitedBy: string | null,
   link: string,
   bandName: string,
 ): Omit<Mail, "to"> {
@@ -139,12 +140,13 @@ export function inviteEmail(
     user.role === "admin"
       ? "atualizar o site (shows, integrantes, fotos, vídeos e textos), acompanhar pedidos de contratação e gerenciar usuários"
       : "atualizar shows, integrantes, fotos e vídeos do site e acompanhar os pedidos de contratação";
+  const intro = `${invitedBy ? `${invitedBy} convidou você` : "Você foi convidado(a)"} para o painel da ${bandName} como`;
   return {
     subject: `Convite para o painel da ${bandName}`,
     text: [
       `Olá, ${first}!`,
       "",
-      `${invitedBy} convidou você para o painel da ${bandName} como ${ROLE_TEXT[user.role]}. Lá você pode ${what}.`,
+      `${intro} ${ROLE_TEXT[user.role]}. Lá você pode ${what}.`,
       "",
       `Para aceitar, crie sua senha neste link (válido por ${INVITE_TTL_DAYS} dias, uso único):`,
       link,
@@ -155,7 +157,7 @@ export function inviteEmail(
     html: layout(
       bandName,
       `<h1 style="margin:0 0 16px;font-size:20px">Você foi convidado(a) para o painel</h1>
-<p style="margin:0 0 12px;font-size:15px">Olá, ${esc(first)}! ${esc(invitedBy)} convidou você para o painel da ${esc(bandName)} como <strong>${ROLE_TEXT[user.role]}</strong>. Lá você pode ${esc(what)}.</p>
+<p style="margin:0 0 12px;font-size:15px">Olá, ${esc(first)}! ${esc(intro)} <strong>${ROLE_TEXT[user.role]}</strong>. Lá você pode ${esc(what)}.</p>
 <p style="margin:20px 0"><a href="${esc(link)}" style="display:inline-block;background:#b0217a;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:bold">Criar minha senha</a></p>
 <p style="margin:0 0 12px;font-size:13px;color:#6b6478">Seu login será <strong>${esc(user.email)}</strong>. O link vale por ${INVITE_TTL_DAYS} dias e só pode ser usado uma vez. Se o botão não funcionar, copie e cole no navegador:<br><span style="word-break:break-all">${esc(link)}</span></p>
 <p style="margin:0;font-size:13px;color:#6b6478">Se você não esperava este convite, ignore este e-mail.</p>`,

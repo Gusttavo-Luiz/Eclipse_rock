@@ -1,0 +1,41 @@
+# Blueprint do Render: https://render.com/docs/blueprint-spec
+# No painel do Render: New → Blueprint → escolha este repositório. Os valores marcados com
+# "sync: false" são pedidos na criação (podem ficar vazios e ser preenchidos depois).
+services:
+  - type: web
+    name: eclipse-rock
+    runtime: node
+    # Disco persistente exige plano pago (Starter ou superior). Sem disco, banco e fotos se perdem a cada deploy.
+    plan: starter
+    # Não há região na América do Sul; Virginia (leste dos EUA) é a mais próxima do Brasil.
+    region: virginia
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    # Publica a cada push na branch, só depois que a verificação do GitHub (CI) passar.
+    autoDeployTrigger: checksPass
+    disk:
+      name: eclipse-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: DATA_DIR
+        value: /var/data
+      - key: TRUST_PROXY
+        value: "1"
+      # Segredo gerado pelo próprio Render (256 bits).
+      - key: APP_SECRET
+        generateValue: true
+      # Domínio definitivo, ex.: https://eclipserock.com.br. Vazio = usa o endereço .onrender.com.
+      - key: SITE_URL
+        sync: false
+      # Primeiro administrador: recebe um convite por e-mail na primeira subida (precisa do e-mail configurado).
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_NAME
+        sync: false
+      # Envio de e-mail (avisos de solicitações, convites e recuperação de senha).
+      - key: MAIL_FROM
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false

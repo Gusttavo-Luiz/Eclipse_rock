@@ -64,7 +64,15 @@ export function createApp(db: DB, opts: { serveClient?: boolean; mailer?: Mailer
     }),
   );
 
-  app.get("/api/health", (_req, res) => res.json({ ok: true }));
+  // Usado pelo Render (healthCheckPath) e pelo HEALTHCHECK do Docker: confirma que o banco responde.
+  app.get("/api/health", (_req, res) => {
+    try {
+      db.prepare("SELECT 1").get();
+      res.setHeader("Cache-Control", "no-store").json({ ok: true });
+    } catch {
+      res.status(503).json({ ok: false });
+    }
+  });
 
   const api = express.Router();
   api.use(loadUser(db));

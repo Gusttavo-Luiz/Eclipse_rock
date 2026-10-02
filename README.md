@@ -71,7 +71,8 @@ O site de referência (`eclipse-rock-hub.base44.app`) é uma aplicação renderi
 | Imagens | `sharp`: valida o conteúdo real, remove EXIF/GPS, gera WebP em 480/960/1600/2400 px |
 | Validação | `zod`, com os **mesmos schemas** no cliente e no servidor (`shared/schemas.ts`) |
 | E-mail | Resend (API HTTP) ou SMTP (`nodemailer`), escolhido pelas variáveis de ambiente |
-| Testes | Vitest + Supertest (47 testes de API, segurança, persistência, avisos por e-mail, recuperação de senha e convites) |
+| Testes | Vitest + Supertest (52 testes de API, segurança, persistência, avisos por e-mail, recuperação de senha, convites e primeiro acesso) |
+| Publicação | Render (Blueprint em `render.yaml`) + verificação no GitHub Actions |
 
 **Por que SQLite?** Para um site de banda, um servidor só com um arquivo de banco é a solução mais simples e robusta de operar: sem serviço extra, backup é copiar a pasta `data/`. O acesso ao banco está concentrado em `server/src/repo.ts` e nas rotas, o que facilita migrar para PostgreSQL no futuro, se o volume exigir.
 
@@ -95,10 +96,12 @@ server/
   src/passwordReset.ts  links de recuperação de senha e de convite, e-mails da conta
   src/seo.ts            meta tags, Open Graph, JSON-LD, sitemap, robots
   src/cli.ts            criação de administrador
+  src/bootstrap.ts      primeiro administrador por ADMIN_EMAIL (convite na primeira subida)
   tests/api.test.ts
   tests/notifications.test.ts
   tests/passwordReset.test.ts
   tests/invites.test.ts
+  tests/bootstrap.test.ts
 shared/                 schemas e tipos usados pelos dois lados
 ```
 
@@ -143,7 +146,7 @@ npm run build       # build de produção
 
 **Executado antes da entrega:**
 
-- **Typecheck e testes:** typecheck sem erros, build de produção ok e **47/47 testes** passando. Os testes cobrem:
+- **Typecheck e testes:** typecheck sem erros, build de produção ok e **52/52 testes** passando. Os testes cobrem:
   - bloqueio de rotas sem login e permissões por papel;
   - CSRF, origem inválida e desativação de usuário com encerramento de sessão;
   - validação (links `javascript:`, UF, telefone, e-mail, data) e campo-armadilha;
@@ -154,7 +157,8 @@ npm run build       # build de produção
   - limite de tentativas de login;
   - aviso por e-mail: destinatários, fallback para o e-mail comercial, escape de HTML, falha do provedor sem perder a solicitação, reenvio e e-mail de teste;
   - recuperação de senha: fluxo completo, uso único, expiração, link novo invalida o anterior, limite por hora e por IP, conta inativa, resposta igual para e-mail cadastrado ou não;
-  - convites: fluxo completo com login automático, só admin, falha de envio, reenvio, expiração em 7 dias, conta desativada, senha definida pelo admin e convite e recuperação com links separados.
+  - convites: fluxo completo com login automático, só admin, falha de envio, reenvio, expiração em 7 dias, conta desativada, senha definida pelo admin e convite e recuperação com links separados;
+  - primeiro acesso por `ADMIN_EMAIL`: convite na primeira subida, sem reenvio a cada reinício, nova tentativa após falha ou expiração.
 - **Teste no navegador** (Chromium, 1440 px e 390 px, com dados de teste em banco temporário):
   - menu mobile fecha após a seleção;
   - erros do formulário recebem foco;
@@ -166,7 +170,64 @@ npm run build       # build de produção
 - **Acessibilidade (axe):** WCAG 2.2 AA com **0 violações** nas páginas públicas e do painel.
 - **Segurança:** cabeçalhos (CSP, HSTS, nosniff, frame-ancestors), nenhum segredo no bundle e acesso a arquivos fora de `/uploads` bloqueado.
 
-## Publicar em produção
+## Publicar no Render (recomendado)
+
+O repositório já traz o `render.yaml` (Blueprint) com tudo configurado: serviço web Node 22, disco persistente de 1 GB em `/var/data` (banco + imagens), health check em `/api/health`, `APP_SECRET` gerado pelo próprio Render e publicação automática a cada push, depois que a verificação do GitHub (CI) passar.
+
+**Custos:** o disco persistente exige plano pago. O plano **Starter** custa cerca de US$ 7/mês, mais cerca de US$ 0,25/GB/mês de disco. O plano gratuito não serve: sem disco, banco e fotos se perdem a cada deploy. O Resend tem plano gratuito que atende o volume de uma banda.
+
+### 1. E-mail (Resend): antes de publicar
+
+1. Crie uma conta em [resend.com](https://resend.com) → **Domains** → adicione `eclipserock.com.br` e cadastre no seu DNS os registros que ele mostrar. A verificação pode levar algumas horas.
+2. **API Keys** → crie uma chave com permissão de envio (`re_...`).
+
+Sem e-mail o site funciona, mas sem avisos de solicitações, convites e recuperação de senha. O primeiro admin, nesse caso, é criado pelo Shell (veja o passo 3).
+
+### 2. Criar o serviço
+
+1. No [Render](https://dashboard.render.com): **New → Blueprint** → conecte o GitHub e escolha este repositório e a branch.
+2. O Render pede os valores marcados no `render.yaml`:
+
+| Variável | O que colocar |
+|---|---|
+| `SITE_URL` | Deixe **vazio** por enquanto (usa o endereço `.onrender.com`). Preencha no passo 4. |
+| `ADMIN_EMAIL` / `ADMIN_NAME` | E-mail e nome de quem vai administrar o site. |
+| `MAIL_FROM` | `Eclipse Rock <avisos@eclipserock.com.br>` (domínio verificado no Resend). |
+| `RESEND_API_KEY` | A chave `re_...` do Resend. |
+
+3. Confirme. O primeiro deploy leva alguns minutos. Em **Logs** deve aparecer `Eclipse Rock rodando…` e `[primeiro acesso] convite de administrador enviado…`.
+
+### 3. Primeiro acesso
+
+- **Com e-mail configurado:** abra o convite que chegou no `ADMIN_EMAIL`, crie a senha e você já entra no painel. O convite vale 7 dias; se expirar, reinicie o serviço (**Manual Deploy → Restart service**) para receber outro. Depois que alguém entra no painel, `ADMIN_EMAIL` deixa de ter efeito e pode ser apagado.
+- **Sem e-mail:** no Render, aba **Shell**:
+  ```bash
+  node dist/server/cli.js create-admin --email voce@exemplo.com --name "Seu nome"
+  ```
+
+Em seguida, siga os "Primeiros passos no painel" abaixo.
+
+### 4. Domínio próprio
+
+1. No serviço: **Settings → Custom Domains** → adicione `eclipserock.com.br` e `www.eclipserock.com.br` e crie no DNS os registros que o Render indicar. O certificado HTTPS é emitido automaticamente.
+2. Em **Environment**, defina `SITE_URL=https://eclipserock.com.br` e salve; o serviço reinicia.
+3. No painel do site, em **Configurações → SEO**, confirme o "Endereço do site".
+4. Envie `https://eclipserock.com.br/sitemap.xml` no Google Search Console.
+
+### Dia a dia
+
+- **Atualizações:** cada push na branch configurada passa pela verificação do GitHub (typecheck, testes e build, em `.github/workflows/ci.yml`) e, se passar, é publicado. Serviços com disco não têm deploy sem interrupção: o site fica fora do ar por alguns segundos durante cada publicação.
+- **Backup:** o Render tira snapshots diários do disco (restauráveis em **Disks**). Para uma cópia própria e consistente do banco com o site no ar, no Shell:
+  ```bash
+  node -e "require('better-sqlite3')('/var/data/eclipse-rock.sqlite').backup('/var/data/backup.sqlite').then(() => console.log('ok'))"
+  ```
+  Depois baixe `backup.sqlite` e a pasta `/var/data/uploads` (fotos) para fora do Render.
+- **Monitoramento:** o Render reinicia o serviço se `/api/health` parar de responder. Os logs mostram falhas de e-mail com o prefixo `[aviso]`, `[convite]`, `[senha]` ou `[primeiro acesso]`.
+- **Uma instância só:** o banco SQLite fica no disco de uma única instância. Não aumente o número de instâncias.
+
+> Nota: o `render.yaml` foi escrito seguindo a especificação de Blueprint do Render, mas não pôde ser validado contra o Render a partir deste ambiente. Se o Render recusar algum campo (por exemplo, `autoDeployTrigger`), remova a linha e ajuste a opção equivalente em **Settings** do serviço.
+
+## Publicar em outro lugar (Docker ou servidor próprio)
 
 1. Defina as variáveis do `.env.example`, principalmente:
    - `APP_SECRET` (32+ caracteres; o servidor não sobe sem ele);
@@ -176,19 +237,16 @@ npm run build       # build de produção
 2. Faça o build e suba o servidor:
    ```bash
    npm ci && npm run build
-   node dist/server/cli.js create-admin --email voce@exemplo.com --name "Seu nome"
    npm start
    ```
    Ou use o Docker:
    ```bash
    docker build -t eclipse-rock .
    docker run -p 3001:3001 -v eclipse-data:/data -e APP_SECRET=... -e SITE_URL=https://eclipserock.com.br eclipse-rock
-   docker exec -it <container> node dist/server/cli.js create-admin --email ... --name "..."
    ```
-3. Sirva o site **somente por HTTPS**. Plataformas como Render, Railway e Fly.io já fornecem HTTPS; com Nginx, use Let's Encrypt.
-4. Aponte o domínio (`eclipserock.com.br`) e envie `https://eclipserock.com.br/sitemap.xml` no Google Search Console.
-5. **Backup:** copie periodicamente a pasta `DATA_DIR`, que contém o banco e as imagens.
-6. **Avisos por e-mail** (opcional, recomendado): veja a seção abaixo.
+   Primeiro admin: defina `ADMIN_EMAIL` (com e-mail configurado) ou rode `node dist/server/cli.js create-admin --email ... --name "..."` (no Docker, com `docker exec -it <container>`).
+3. Sirva o site **somente por HTTPS** (com Nginx, use Let's Encrypt).
+4. **Backup:** copie periodicamente a pasta `DATA_DIR`, que contém o banco e as imagens.
 
 ## Aviso de nova solicitação por e-mail
 
@@ -252,6 +310,6 @@ O servidor roda como **uma instância**. Os limites de requisição ficam em mem
 
 ## Integrações pendentes / próximos passos
 
-- **Ativar o aviso por e-mail em produção:** o código está pronto; falta criar a conta no provedor (Resend ou SMTP), verificar o domínio e definir as variáveis (veja "Aviso de nova solicitação por e-mail").
+- **Publicar:** o código e o `render.yaml` estão prontos; falta criar a conta no Resend, verificar o domínio e criar o Blueprint no Render (veja "Publicar no Render").
 - **Conteúdo da referência:** textos e imagens do site original que não puderam ser lidos devem ser incluídos pelo painel.
 - **Instrumentos dos integrantes, YouTube, Spotify, e-mail e telefone oficiais:** aguardam confirmação da banda.
