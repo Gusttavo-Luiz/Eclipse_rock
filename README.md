@@ -58,7 +58,8 @@ O site de referência (`eclipse-rock-hub.base44.app`) é uma aplicação renderi
   - exclusão definitiva só para admin, para pedidos de eliminação de dados (LGPD).
 - **Integrantes, Galeria e Vídeos:** CRUD completo, publicar/ocultar e reordenação.
 - **Configurações** (só admin): textos, logo, foto do topo, foto da seção "A banda", imagem de compartilhamento, redes, WhatsApp, e-mails, SEO e destinatários dos avisos de novas solicitações (com botão de e-mail de teste).
-- **Usuários** (só admin) e **Minha conta** (troca de senha).
+- **Usuários** (só admin): convite por e-mail (a pessoa cria a própria senha) ou senha inicial definida pelo admin; situação do convite e botão para reenviar.
+- **Minha conta:** troca de senha.
 
 ## Stack
 
@@ -70,7 +71,7 @@ O site de referência (`eclipse-rock-hub.base44.app`) é uma aplicação renderi
 | Imagens | `sharp`: valida o conteúdo real, remove EXIF/GPS, gera WebP em 480/960/1600/2400 px |
 | Validação | `zod`, com os **mesmos schemas** no cliente e no servidor (`shared/schemas.ts`) |
 | E-mail | Resend (API HTTP) ou SMTP (`nodemailer`), escolhido pelas variáveis de ambiente |
-| Testes | Vitest + Supertest (38 testes de API, segurança, persistência, avisos por e-mail e recuperação de senha) |
+| Testes | Vitest + Supertest (47 testes de API, segurança, persistência, avisos por e-mail, recuperação de senha e convites) |
 
 **Por que SQLite?** Para um site de banda, um servidor só com um arquivo de banco é a solução mais simples e robusta de operar: sem serviço extra, backup é copiar a pasta `data/`. O acesso ao banco está concentrado em `server/src/repo.ts` e nas rotas, o que facilita migrar para PostgreSQL no futuro, se o volume exigir.
 
@@ -91,12 +92,13 @@ server/
   src/uploads.ts        processamento seguro de imagens
   src/mailer.ts         envio de e-mail (Resend ou SMTP)
   src/notifications.ts  aviso de nova solicitação para a equipe
-  src/passwordReset.ts  links de recuperação de senha e e-mails da conta
+  src/passwordReset.ts  links de recuperação de senha e de convite, e-mails da conta
   src/seo.ts            meta tags, Open Graph, JSON-LD, sitemap, robots
   src/cli.ts            criação de administrador
   tests/api.test.ts
   tests/notifications.test.ts
   tests/passwordReset.test.ts
+  tests/invites.test.ts
 shared/                 schemas e tipos usados pelos dois lados
 ```
 
@@ -106,7 +108,7 @@ shared/                 schemas e tipos usados pelos dois lados
 |---|---|
 | `users` | contas do painel |
 | `sessions` | sessões de login |
-| `password_resets` | links de recuperação de senha (só o hash do token) |
+| `password_resets` | links de recuperação de senha e de convite (só o hash do token) |
 | `uploads` | imagens enviadas |
 | `events` | shows |
 | `band_members` | integrantes |
@@ -141,7 +143,7 @@ npm run build       # build de produção
 
 **Executado antes da entrega:**
 
-- **Typecheck e testes:** typecheck sem erros, build de produção ok e **38/38 testes** passando. Os testes cobrem:
+- **Typecheck e testes:** typecheck sem erros, build de produção ok e **47/47 testes** passando. Os testes cobrem:
   - bloqueio de rotas sem login e permissões por papel;
   - CSRF, origem inválida e desativação de usuário com encerramento de sessão;
   - validação (links `javascript:`, UF, telefone, e-mail, data) e campo-armadilha;
@@ -151,7 +153,8 @@ npm run build       # build de produção
   - escape de HTML no SEO, sitemap e robots;
   - limite de tentativas de login;
   - aviso por e-mail: destinatários, fallback para o e-mail comercial, escape de HTML, falha do provedor sem perder a solicitação, reenvio e e-mail de teste;
-  - recuperação de senha: fluxo completo, uso único, expiração, link novo invalida o anterior, limite por hora e por IP, conta inativa, resposta igual para e-mail cadastrado ou não.
+  - recuperação de senha: fluxo completo, uso único, expiração, link novo invalida o anterior, limite por hora e por IP, conta inativa, resposta igual para e-mail cadastrado ou não;
+  - convites: fluxo completo com login automático, só admin, falha de envio, reenvio, expiração em 7 dias, conta desativada, senha definida pelo admin e convite e recuperação com links separados.
 - **Teste no navegador** (Chromium, 1440 px e 390 px, com dados de teste em banco temporário):
   - menu mobile fecha após a seleção;
   - erros do formulário recebem foco;
@@ -219,6 +222,17 @@ Proteções:
 - contas desativadas não recebem nem usam links.
 
 Em produção, os links usam `SITE_URL` (ou o "Endereço do site" das Configurações), nunca o cabeçalho Host da requisição. Sem e-mail configurado, um admin redefine a senha em **Usuários** ou pelo comando `create-admin`, que atualiza um usuário existente.
+
+## Convite de usuários por e-mail
+
+Em **Usuários → Novo usuário**, o admin escolhe como a pessoa vai entrar:
+
+- **Enviar convite por e-mail** (padrão quando o e-mail está configurado): a pessoa recebe um link válido por **7 dias**, cria a própria senha e já entra no painel. Ninguém além dela conhece a senha.
+- **Definir uma senha inicial agora:** o admin repassa a senha por um canal seguro.
+
+Enquanto o convite não é aceito, a lista mostra **Convite pendente** com a validade do link. O botão de enviar reenvia o convite (gera um link novo e invalida o anterior), inclusive depois que o link expira. Se o envio falhar, o usuário é criado mesmo assim e o painel mostra o motivo da falha.
+
+O link de convite usa as mesmas proteções da recuperação de senha e não serve como link de recuperação (nem o contrário). Se o admin definir a senha de um usuário pendente, ou se a pessoa usar "Esqueci minha senha", o convite é concluído e o link antigo deixa de valer. Contas desativadas não aceitam convite.
 
 > WhatsApp: o aviso automático por WhatsApp exige a API oficial do WhatsApp Business (Meta), com conta comercial verificada e modelos de mensagem aprovados. Por isso o aviso é por e-mail; no celular, a notificação do app de e-mail cumpre o mesmo papel.
 

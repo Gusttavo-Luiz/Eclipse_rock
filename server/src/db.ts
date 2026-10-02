@@ -223,6 +223,15 @@ const migrations: { name: string; sql: string }[] = [
       CREATE INDEX idx_password_resets_user ON password_resets(user_id, created_at);
     `,
   },
+  {
+    // Convites por e-mail: o mesmo mecanismo de link, com outro tipo e validade maior.
+    // invite_pending = conta criada por convite que ainda não definiu a senha.
+    name: "005_user_invites",
+    sql: `
+      ALTER TABLE password_resets ADD COLUMN kind TEXT NOT NULL DEFAULT 'reset' CHECK (kind IN ('reset','invite'));
+      ALTER TABLE users ADD COLUMN invite_pending INTEGER NOT NULL DEFAULT 0 CHECK (invite_pending IN (0,1));
+    `,
+  },
 ];
 
 export function openDb(file = path.join(config.dataDir, "eclipse-rock.sqlite")): DB {

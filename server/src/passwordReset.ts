@@ -1,13 +1,20 @@
-/** Recuperação de senha por e-mail: tokens de uso único e e-mails enviados ao usuário. */
+/** Recuperação de senha e convites por e-mail: tokens de uso único e e-mails enviados ao usuário. */
 import crypto from "node:crypto";
+import type { Request } from "express";
 import { sha256 } from "./auth";
+import { config } from "./config";
 import type { DB } from "./db";
 import type { Mail, Mailer } from "./mailer";
 import { esc } from "./notifications";
+import { getAdminSettings } from "./repo";
+
+export type LinkKind = "reset" | "invite";
 
 export const RESET_TTL_MINUTES = 60;
+export const INVITE_TTL_DAYS = 7;
+const TTL_MS: Record<LinkKind, number> = { reset: RESET_TTL_MINUTES * 60_000, invite: INVITE_TTL_DAYS * 86_400_000 };
 /** Máximo de links gerados por usuário por hora (evita encher a caixa de entrada de alguém). */
-const MAX_PER_HOUR = 3;
+const MAX_PER_HOUR: Record<LinkKind, number> = { reset: 3, invite: 5 };
 
 export interface ResetUser {
   id: number;
@@ -19,20 +26,27 @@ export interface ResetUser {
  * Gera um link novo e invalida os anteriores ainda não usados.
  * Retorna null se o limite por hora foi atingido.
  */
-export function createResetToken(db: DB, userId: number): string | null {
+export function createResetToken(db: DB, userId: number, kind: LinkKind = "reset"): string | null {
   const since = new Date(Date.now() - 3_600_000).toISOString();
   const recent = (
-    db.prepare("SELECT COUNT(*) n FROM password_resets WHERE user_id = ? AND created_at > ?").get(userId, since) as { n: number }
+    db
+      .prepare("SELECT COUNT(*) n FROM password_resets WHERE user_id = ? AND kind = ? AND created_at > ?")
+      .get(userId, kind, since) as { n: number }
   ).n;
-  if (recent >= MAX_PER_HOUR) return null;
+  if (recent >= MAX_PER_HOUR[kind]) return null;
   const token = crypto.randomBytes(32).toString("base64url");
   const now = new Date();
   db.transaction(() => {
-    db.prepare("UPDATE password_resets SET used_at = ? WHERE user_id = ? AND used_at IS NULL").run(now.toISOString(), userId);
-    db.prepare("INSERT INTO password_resets (user_id, token_hash, expires_at) VALUES (?, ?, ?)").run(
+    db.prepare("UPDATE password_resets SET used_at = ? WHERE user_id = ? AND kind = ? AND used_at IS NULL").run(
+      now.toISOString(),
+      userId,
+      kind,
+    );
+    db.prepare("INSERT INTO password_resets (user_id, token_hash, expires_at, kind) VALUES (?, ?, ?, ?)").run(
       userId,
       sha256(token),
-      new Date(now.getTime() + RESET_TTL_MINUTES * 60_000).toISOString(),
+      new Date(now.getTime() + TTL_MS[kind]).toISOString(),
+      kind,
     );
     // Limpeza de registros antigos.
     db.prepare("DELETE FROM password_resets WHERE created_at < ?").run(new Date(now.getTime() - 30 * 86_400_000).toISOString());
@@ -40,16 +54,44 @@ export function createResetToken(db: DB, userId: number): string | null {
   return token;
 }
 
-/** Usuário dono de um token válido (não usado, não expirado, conta ativa). */
-export function findResetUser(db: DB, token: string): (ResetUser & { resetId: number }) | null {
+/** Usuário dono de um token válido do tipo pedido (não usado, não expirado, conta ativa). */
+export function findResetUser(db: DB, token: string, kind: LinkKind = "reset"): (ResetUser & { resetId: number }) | null {
   const row = db
     .prepare(
       `SELECT r.id resetId, u.id, u.name, u.email
        FROM password_resets r JOIN users u ON u.id = r.user_id
-       WHERE r.token_hash = ? AND r.used_at IS NULL AND r.expires_at > ? AND u.active = 1`,
+       WHERE r.token_hash = ? AND r.kind = ? AND r.used_at IS NULL AND r.expires_at > ? AND u.active = 1`,
     )
-    .get(sha256(token), new Date().toISOString()) as (ResetUser & { resetId: number }) | undefined;
+    .get(sha256(token), kind, new Date().toISOString()) as (ResetUser & { resetId: number }) | undefined;
   return row ?? null;
+}
+
+/**
+ * Define a senha usando um link válido: marca o link (e todos os outros do usuário) como usados,
+ * conclui o convite pendente e encerra as sessões. Retorna false se o link já tinha sido usado.
+ */
+export function applyLinkPassword(db: DB, resetId: number, userId: number, hash: string, summary: string): boolean {
+  const now = new Date().toISOString();
+  return db.transaction(() => {
+    // Marca como usado só se ainda não foi (dois envios simultâneos não usam o mesmo link).
+    const mark = db.prepare("UPDATE password_resets SET used_at = ? WHERE id = ? AND used_at IS NULL").run(now, resetId);
+    if (!mark.changes) return false;
+    db.prepare("UPDATE password_resets SET used_at = ? WHERE user_id = ? AND used_at IS NULL").run(now, userId);
+    db.prepare("UPDATE users SET password_hash = ?, invite_pending = 0, updated_at = ? WHERE id = ?").run(hash, now, userId);
+    // Encerra todas as sessões: quem tinha acesso com a senha antiga perde o acesso.
+    db.prepare("DELETE FROM sessions WHERE user_id = ?").run(userId);
+    db.prepare("INSERT INTO audit_log (user_id, action, entity, entity_id, summary) VALUES (?, 'update', 'user', ?, ?)").run(
+      userId,
+      userId,
+      summary,
+    );
+    return true;
+  })();
+}
+
+/** Base dos links enviados por e-mail. Em produção nunca vem do cabeçalho Host (evita links para outro domínio). */
+export function linkBase(db: DB, req: Request) {
+  return config.siteUrl ?? (config.isProd ? getAdminSettings(db).siteUrl : `${req.protocol}://${req.get("host")}`);
 }
 
 const layout = (bandName: string, body: string) => `<!doctype html>
@@ -80,6 +122,43 @@ export function resetEmail(user: ResetUser, link: string, bandName: string): Omi
 <p style="margin:20px 0"><a href="${esc(link)}" style="display:inline-block;background:#b0217a;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:bold">Criar nova senha</a></p>
 <p style="margin:0 0 12px;font-size:13px;color:#6b6478">O link vale por ${RESET_TTL_MINUTES} minutos e só pode ser usado uma vez. Se o botão não funcionar, copie e cole no navegador:<br><span style="word-break:break-all">${esc(link)}</span></p>
 <p style="margin:0;font-size:13px;color:#6b6478">Se não foi você, ignore este e-mail: sua senha continua a mesma.</p>`,
+    ),
+  };
+}
+
+const ROLE_TEXT = { admin: "administrador(a)", editor: "editor(a)" } as const;
+
+export function inviteEmail(
+  user: ResetUser & { role: "admin" | "editor" },
+  invitedBy: string,
+  link: string,
+  bandName: string,
+): Omit<Mail, "to"> {
+  const first = user.name.split(" ")[0];
+  const what =
+    user.role === "admin"
+      ? "atualizar o site (shows, integrantes, fotos, vídeos e textos), acompanhar pedidos de contratação e gerenciar usuários"
+      : "atualizar shows, integrantes, fotos e vídeos do site e acompanhar os pedidos de contratação";
+  return {
+    subject: `Convite para o painel da ${bandName}`,
+    text: [
+      `Olá, ${first}!`,
+      "",
+      `${invitedBy} convidou você para o painel da ${bandName} como ${ROLE_TEXT[user.role]}. Lá você pode ${what}.`,
+      "",
+      `Para aceitar, crie sua senha neste link (válido por ${INVITE_TTL_DAYS} dias, uso único):`,
+      link,
+      "",
+      `Seu login será este e-mail: ${user.email}`,
+      "Se você não esperava este convite, ignore este e-mail.",
+    ].join("\n"),
+    html: layout(
+      bandName,
+      `<h1 style="margin:0 0 16px;font-size:20px">Você foi convidado(a) para o painel</h1>
+<p style="margin:0 0 12px;font-size:15px">Olá, ${esc(first)}! ${esc(invitedBy)} convidou você para o painel da ${esc(bandName)} como <strong>${ROLE_TEXT[user.role]}</strong>. Lá você pode ${esc(what)}.</p>
+<p style="margin:20px 0"><a href="${esc(link)}" style="display:inline-block;background:#b0217a;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:bold">Criar minha senha</a></p>
+<p style="margin:0 0 12px;font-size:13px;color:#6b6478">Seu login será <strong>${esc(user.email)}</strong>. O link vale por ${INVITE_TTL_DAYS} dias e só pode ser usado uma vez. Se o botão não funcionar, copie e cole no navegador:<br><span style="word-break:break-all">${esc(link)}</span></p>
+<p style="margin:0;font-size:13px;color:#6b6478">Se você não esperava este convite, ignore este e-mail.</p>`,
     ),
   };
 }

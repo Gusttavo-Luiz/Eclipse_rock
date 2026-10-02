@@ -294,12 +294,23 @@ export const loginInput = z.object({
   password: z.string().min(1, "Informe a senha.").max(200),
 });
 
-export const userCreateInput = z.object({
-  name: required(80, "Informe o nome."),
-  email,
-  role: z.enum(ROLES),
-  password,
-});
+export const userCreateInput = z
+  .object({
+    name: required(80, "Informe o nome."),
+    email,
+    role: z.enum(ROLES),
+    /** true = a pessoa recebe um convite por e-mail e cria a própria senha */
+    sendInvite: z.boolean().optional().default(false),
+    password: z
+      .union([z.literal(""), password])
+      .optional()
+      .transform((v) => (v ? v : undefined)),
+  })
+  .superRefine((d, ctx) => {
+    if (!d.sendInvite && !d.password) {
+      ctx.addIssue({ code: "custom", path: ["password"], message: "Defina a senha inicial ou envie um convite por e-mail." });
+    }
+  });
 export const userUpdateInput = z.object({
   name: required(80, "Informe o nome."),
   role: z.enum(ROLES),

@@ -53,7 +53,7 @@ describe("recuperação de senha por e-mail", () => {
     await agent.post("/api/auth/login").set(H).send({ email: "admin@teste.com", password: "SenhaAdmin123" });
     expect((await agent.get("/api/auth/me")).body.user).not.toBeNull();
 
-    expect((await request(app).get("/api/auth/options")).body).toEqual({ passwordReset: true });
+    expect((await request(app).get("/api/auth/options")).body).toEqual({ passwordReset: true, invites: true });
     const res = await forgot("ADMIN@teste.com");
     expect(res.status).toBe(200);
     await vi.waitFor(() => expect(mailer.sent).toHaveLength(1));
@@ -143,7 +143,7 @@ describe("recuperação de senha por e-mail", () => {
 
   it("sem e-mail configurado, a opção fica indisponível", async () => {
     const { app, forgot } = await setup(null);
-    expect((await request(app).get("/api/auth/options")).body).toEqual({ passwordReset: false });
+    expect((await request(app).get("/api/auth/options")).body).toEqual({ passwordReset: false, invites: false });
     expect((await forgot("admin@teste.com")).status).toBe(503);
   });
 

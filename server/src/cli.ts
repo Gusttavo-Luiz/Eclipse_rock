@@ -50,14 +50,15 @@ async function createAdmin() {
   }
   const db = openDb();
   const existing = db.prepare("SELECT id FROM users WHERE email = ?").get(d.data.email) as { id: number } | undefined;
-  const hash = await hashPassword(d.data.password);
+  const hash = await hashPassword(pw.data);
   if (existing) {
-    db.prepare("UPDATE users SET password_hash = ?, role = 'admin', active = 1, updated_at = ? WHERE id = ?").run(
+    db.prepare("UPDATE users SET password_hash = ?, role = 'admin', active = 1, invite_pending = 0, updated_at = ? WHERE id = ?").run(
       hash,
       new Date().toISOString(),
       existing.id,
     );
     db.prepare("DELETE FROM sessions WHERE user_id = ?").run(existing.id);
+    db.prepare("UPDATE password_resets SET used_at = ? WHERE user_id = ? AND used_at IS NULL").run(new Date().toISOString(), existing.id);
     console.log(`Usuário ${d.data.email} atualizado como administrador (nova senha definida).`);
   } else {
     db.prepare("INSERT INTO users (name, email, role, password_hash) VALUES (?, ?, 'admin', ?)").run(d.data.name, d.data.email, hash);

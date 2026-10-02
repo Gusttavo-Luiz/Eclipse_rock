@@ -161,6 +161,10 @@ export interface User {
   email: string;
   role: Role;
   active: boolean;
+  /** Criado por convite e ainda sem senha definida. */
+  invitePending: boolean;
+  /** Validade do convite mais recente ainda não usado (null se não houver). */
+  inviteExpiresAt: string | null;
   lastLoginAt: string | null;
   createdAt: string;
 }

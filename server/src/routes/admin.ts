@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { Router, type Request } from "express";
 import multer from "multer";
 import { z } from "zod";
@@ -31,6 +32,7 @@ import type { DB } from "../db";
 import { ah, HttpError, intParam, notFound, parse } from "../http";
 import type { Mailer } from "../mailer";
 import { esc, notifyNewBooking } from "../notifications";
+import { createResetToken, inviteEmail, linkBase } from "../passwordReset";
 import {
   getAdminSettings,
   getEventBy,
@@ -534,16 +536,43 @@ export function adminRoutes(db: DB, mailer: Mailer | null) {
   );
 
   // ---------- Usuários (somente admin) ----------
-  const userCols = "id, name, email, role, active, last_login_at, created_at";
+  const userCols = `id, name, email, role, active, invite_pending, last_login_at, created_at,
+    (SELECT MAX(expires_at) FROM password_resets r
+     WHERE r.user_id = users.id AND r.kind = 'invite' AND r.used_at IS NULL AND r.expires_at > strftime('%Y-%m-%dT%H:%M:%fZ','now')) invite_expires_at`;
   const mapUser = (u: Record<string, unknown>): User => ({
     id: u.id as number,
     name: u.name as string,
     email: u.email as string,
     role: u.role as User["role"],
     active: !!u.active,
+    invitePending: !!u.invite_pending,
+    inviteExpiresAt: (u.invite_expires_at as string) ?? null,
     lastLoginAt: (u.last_login_at as string) ?? null,
     createdAt: u.created_at as string,
   });
+  const getUser = (id: number) => mapUser(db.prepare(`SELECT ${userCols} FROM users WHERE id=?`).get(id) as Record<string, unknown>);
+
+  /** Gera o link de convite e envia. Retorna a mensagem de erro do envio (ou null se deu certo). */
+  async function sendInvite(req: Request, userId: number): Promise<string | null> {
+    if (!mailer) return "O envio de e-mail não está configurado no servidor.";
+    const u = db.prepare("SELECT id, name, email, role FROM users WHERE id = ?").get(userId) as {
+      id: number;
+      name: string;
+      email: string;
+      role: "admin" | "editor";
+    };
+    const token = createResetToken(db, u.id, "invite");
+    if (!token) return "Muitos convites enviados para esta pessoa na última hora. Tente mais tarde.";
+    const link = `${linkBase(db, req)}/admin/convite#token=${token}`;
+    try {
+      await mailer.send({ to: [u.email], ...inviteEmail(u, req.user!.name, link, getAdminSettings(db).bandName) });
+      return null;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[convite] falha ao enviar convite do usuário ${u.id}: ${msg}`);
+      return `O provedor de e-mail recusou o envio: ${msg}`;
+    }
+  }
 
   r.get(
     "/users",
@@ -561,12 +590,18 @@ export function adminRoutes(db: DB, mailer: Mailer | null) {
       if (db.prepare("SELECT 1 FROM users WHERE email = ?").get(d.email)) {
         throw new HttpError(422, "Revise os campos destacados.", { email: "Já existe um usuário com este e-mail." });
       }
+      if (d.sendInvite && !mailer) {
+        throw new HttpError(409, "O envio de e-mail não está configurado no servidor. Defina uma senha inicial.");
+      }
+      // Convidado: senha aleatória descartada (ninguém a conhece) até a pessoa criar a dela pelo link.
+      const hash = await hashPassword(d.sendInvite ? crypto.randomBytes(32).toString("base64url") : d.password!);
       const result = db
-        .prepare("INSERT INTO users (name, email, role, password_hash) VALUES (?, ?, ?, ?)")
-        .run(d.name, d.email, d.role, await hashPassword(d.password));
+        .prepare("INSERT INTO users (name, email, role, password_hash, invite_pending) VALUES (?, ?, ?, ?, ?)")
+        .run(d.name, d.email, d.role, hash, d.sendInvite ? 1 : 0);
       const id = Number(result.lastInsertRowid);
-      audit(db, req, "create", "user", id, `Papel: ${d.role}`);
-      res.status(201).json(mapUser(db.prepare(`SELECT ${userCols} FROM users WHERE id=?`).get(id) as Record<string, unknown>));
+      audit(db, req, "create", "user", id, `Papel: ${d.role}${d.sendInvite ? " · convite por e-mail" : ""}`);
+      const inviteError = d.sendInvite ? await sendInvite(req, id) : null;
+      res.status(201).json({ ...getUser(id), inviteError });
     }),
   );
 
@@ -583,10 +618,32 @@ export function adminRoutes(db: DB, mailer: Mailer | null) {
         .prepare("UPDATE users SET name=?, role=?, active=?, updated_at=? WHERE id=?")
         .run(d.name, d.role, d.active ? 1 : 0, now(), id);
       if (!result.changes) throw notFound("Usuário");
-      if (d.password) db.prepare("UPDATE users SET password_hash=? WHERE id=?").run(await hashPassword(d.password), id);
+      if (d.password) {
+        // Senha definida pelo admin conclui um convite pendente e invalida links abertos.
+        db.prepare("UPDATE users SET password_hash=?, invite_pending=0 WHERE id=?").run(await hashPassword(d.password), id);
+        db.prepare("UPDATE password_resets SET used_at=? WHERE user_id=? AND used_at IS NULL").run(now(), id);
+      }
       if (!d.active || d.password) db.prepare("DELETE FROM sessions WHERE user_id=?").run(id);
       audit(db, req, "update", "user", id, d.password ? "Dados e senha atualizados" : "Dados atualizados");
-      res.json(mapUser(db.prepare(`SELECT ${userCols} FROM users WHERE id=?`).get(id) as Record<string, unknown>));
+      res.json(getUser(id));
+    }),
+  );
+
+  r.post(
+    "/users/:id/invite",
+    adminOnly,
+    ah(async (req, res) => {
+      const id = intParam(req.params.id);
+      const row = db.prepare("SELECT invite_pending, active FROM users WHERE id=?").get(id) as
+        | { invite_pending: number; active: number }
+        | undefined;
+      if (!row) throw notFound("Usuário");
+      if (!row.invite_pending) throw new HttpError(409, "Esta pessoa já criou a senha. Para recuperar o acesso, use “Esqueci minha senha”.");
+      if (!row.active) throw new HttpError(409, "Reative o acesso antes de reenviar o convite.");
+      const error = await sendInvite(req, id);
+      if (error) throw new HttpError(mailer ? 502 : 409, error);
+      audit(db, req, "invite", "user", id, "Convite reenviado por e-mail");
+      res.json(getUser(id));
     }),
   );
 

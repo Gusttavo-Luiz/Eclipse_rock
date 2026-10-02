@@ -31,6 +31,7 @@ const ACTION_LABEL: Record<string, string> = {
   notify: "reenviou o aviso da",
   notify_failed: "não conseguiu avisar por e-mail sobre a",
   test_email: "testou o e-mail em",
+  invite: "reenviou o convite de",
 };
 
 export function Dashboard() {

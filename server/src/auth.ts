@@ -141,7 +141,7 @@ export function csrfGuard(req: Request, _res: Response, next: NextFunction) {
 export function audit(
   db: DB,
   req: Request,
-  action: "create" | "update" | "delete" | "login" | "logout" | "status" | "note" | "upload" | "notify" | "test_email",
+  action: "create" | "update" | "delete" | "login" | "logout" | "status" | "note" | "upload" | "notify" | "test_email" | "invite",
   entity: string,
   entityId: number | null,
   summary?: string,

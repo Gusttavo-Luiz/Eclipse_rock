@@ -1,4 +1,4 @@
-import { Router, type Request } from "express";
+import { Router } from "express";
 import { forgotPasswordInput, loginInput, passwordChangeInput, resetPasswordInput } from "../../../shared/schemas";
 import {
   audit,
@@ -13,22 +13,22 @@ import {
   setSessionCookie,
   verifyPassword,
 } from "../auth";
-import { config } from "../config";
 import type { DB } from "../db";
 import { ah, HttpError, parse, rateLimit } from "../http";
 import type { Mailer } from "../mailer";
-import { createResetToken, findResetUser, passwordChangedEmail, resetEmail, sendInBackground } from "../passwordReset";
+import {
+  applyLinkPassword,
+  createResetToken,
+  findResetUser,
+  linkBase,
+  passwordChangedEmail,
+  resetEmail,
+  sendInBackground,
+} from "../passwordReset";
 import { getAdminSettings } from "../repo";
 
 export function authRoutes(db: DB, mailer: Mailer | null) {
   const r = Router();
-
-  /**
-   * Base dos links enviados por e-mail. Nunca vem do cabeçalho Host em produção
-   * (evita que um atacante gere links apontando para outro domínio).
-   */
-  const linkBase = (req: Request) =>
-    config.siteUrl ?? (config.isProd ? getAdminSettings(db).siteUrl : `${req.protocol}://${req.get("host")}`);
 
   const notifyPasswordChanged = (userId: number) => {
     const u = db.prepare("SELECT id, name, email FROM users WHERE id = ?").get(userId) as { id: number; name: string; email: string };
@@ -83,7 +83,7 @@ export function authRoutes(db: DB, mailer: Mailer | null) {
   /** O que a tela de login pode oferecer (ex.: "Esqueci minha senha" só com e-mail configurado). */
   r.get("/options", (_req, res) => {
     res.setHeader("Cache-Control", "no-store");
-    res.json({ passwordReset: !!mailer });
+    res.json({ passwordReset: !!mailer, invites: !!mailer });
   });
 
   // ---------- Recuperação de senha ----------
@@ -116,7 +116,7 @@ export function authRoutes(db: DB, mailer: Mailer | null) {
         const token = createResetToken(db, user.id);
         if (token) {
           // Token no fragmento (#): não vai para o servidor nem para o Referer de outros sites.
-          const link = `${linkBase(req)}/admin/redefinir-senha#token=${token}`;
+          const link = `${linkBase(db, req)}/admin/redefinir-senha#token=${token}`;
           sendInBackground(mailer, { to: [user.email], ...resetEmail(user, link, getAdminSettings(db).bandName) }, "recuperação");
         }
       }
@@ -143,27 +143,44 @@ export function authRoutes(db: DB, mailer: Mailer | null) {
       const d = parse(resetPasswordInput, req.body);
       const user = findResetUser(db, d.token);
       if (!user) throw new HttpError(410, "Este link é inválido, já foi usado ou expirou. Peça um novo.");
-      const hash = await hashPassword(d.newPassword);
-      const now = new Date().toISOString();
-      const used = db.transaction(() => {
-        // Marca como usado só se ainda não foi (dois envios simultâneos não usam o mesmo link).
-        const mark = db.prepare("UPDATE password_resets SET used_at = ? WHERE id = ? AND used_at IS NULL").run(now, user.resetId);
-        if (!mark.changes) return false;
-        db.prepare("UPDATE password_resets SET used_at = ? WHERE user_id = ? AND used_at IS NULL").run(now, user.id);
-        db.prepare("UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?").run(hash, now, user.id);
-        // Encerra todas as sessões: quem tinha acesso com a senha antiga perde o acesso.
-        db.prepare("DELETE FROM sessions WHERE user_id = ?").run(user.id);
-        db.prepare("INSERT INTO audit_log (user_id, action, entity, entity_id, summary) VALUES (?, 'update', 'user', ?, ?)").run(
-          user.id,
-          user.id,
-          "Senha redefinida pelo link enviado por e-mail",
-        );
-        return true;
-      })();
+      const used = applyLinkPassword(db, user.resetId, user.id, await hashPassword(d.newPassword), "Senha redefinida pelo link enviado por e-mail");
       if (!used) throw new HttpError(410, "Este link é inválido, já foi usado ou expirou. Peça um novo.");
       clearSessionCookie(res);
       notifyPasswordChanged(user.id);
       res.json({ ok: true });
+    }),
+  );
+
+  // ---------- Convite (conta criada pelo admin; a pessoa define a própria senha) ----------
+  const INVITE_GONE = "Este convite é inválido, já foi usado ou expirou. Peça a um administrador para reenviar.";
+
+  r.post(
+    "/invite/check",
+    resetLimiter,
+    ah((req, res) => {
+      const token = typeof req.body?.token === "string" ? req.body.token.slice(0, 200) : "";
+      const user = token ? findResetUser(db, token, "invite") : null;
+      if (!user) throw new HttpError(410, INVITE_GONE);
+      res.json({ name: user.name, email: user.email });
+    }),
+  );
+
+  r.post(
+    "/invite/accept",
+    resetLimiter,
+    ah(async (req, res) => {
+      const d = parse(resetPasswordInput, req.body);
+      const user = findResetUser(db, d.token, "invite");
+      if (!user) throw new HttpError(410, INVITE_GONE);
+      const ok = applyLinkPassword(db, user.resetId, user.id, await hashPassword(d.newPassword), "Convite aceito e senha criada");
+      if (!ok) throw new HttpError(410, INVITE_GONE);
+      // Já entra no painel.
+      destroySession(db, req.cookies?.[SESSION_COOKIE]);
+      const { token, expires } = createSession(db, user.id);
+      db.prepare("UPDATE users SET last_login_at = ? WHERE id = ?").run(new Date().toISOString(), user.id);
+      setSessionCookie(res, token, expires);
+      const me = db.prepare("SELECT id, name, email, role FROM users WHERE id = ?").get(user.id);
+      res.json({ user: me });
     }),
   );
 
