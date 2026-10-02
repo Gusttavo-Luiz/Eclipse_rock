@@ -11,6 +11,9 @@ import { ShowsPage } from "./pages/ShowsPage";
 // O painel é carregado sob demanda: visitantes do site nunca baixam esse código.
 const AdminApp = lazy(() => import("./admin/AdminApp"));
 
+// BASE_URL é "/" no site normal e "/<repositório>/" na demonstração do GitHub Pages.
+const basename = import.meta.env.BASE_URL.replace(/\/$/, "") || "/";
+
 const router = createBrowserRouter([
   {
     element: <PublicLayout />,
@@ -30,7 +33,7 @@ const router = createBrowserRouter([
       </Suspense>
     ),
   },
-]);
+], { basename });
 
 export default function App() {
   return <RouterProvider router={router} />;

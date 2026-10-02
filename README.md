@@ -102,7 +102,8 @@ server/
   tests/passwordReset.test.ts
   tests/invites.test.ts
   tests/bootstrap.test.ts
-shared/                 schemas e tipos usados pelos dois lados
+shared/                 schemas, tipos e conteúdo inicial usados pelos dois lados
+client/src/demo/        API simulada da demonstração estática (GitHub Pages)
 ```
 
 **Tabelas:**
@@ -169,6 +170,17 @@ npm run build       # build de produção
   - sem rolagem horizontal.
 - **Acessibilidade (axe):** WCAG 2.2 AA com **0 violações** nas páginas públicas e do painel.
 - **Segurança:** cabeçalhos (CSP, HSTS, nosniff, frame-ancestors), nenhum segredo no bundle e acesso a arquivos fora de `/uploads` bloqueado.
+
+## Demonstração no GitHub Pages
+
+Para mostrar o visual do site sem servidor, `.github/workflows/pages.yml` publica uma **versão de demonstração** no GitHub Pages a cada push (em `https://<usuário>.github.io/<repositório>/`).
+
+- É só o site público, com o conteúdo inicial confirmado e uma faixa avisando que é demonstração.
+- O formulário de contratação e o painel não funcionam (avisam que funcionam na versão publicada). Não há banco: nada do que é cadastrado no Render aparece aqui.
+- Fica fora dos buscadores (`noindex`), para não competir com o site oficial.
+- Build local: `VITE_DEMO=1 VITE_BASE=/speed-bistro/ npm run build:client`.
+
+Na primeira vez, ative em **Settings → Pages → Build and deployment → Source: GitHub Actions** e rode o workflow de novo (aba **Actions**).
 
 ## Publicar no Render (recomendado)
 

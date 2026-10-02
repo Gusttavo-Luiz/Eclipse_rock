@@ -14,6 +14,8 @@ const DEFAULT_ERROR = "Não foi possível conectar ao servidor. Verifique sua co
 
 /** Wrapper de fetch: JSON, cookies de sessão, cabeçalho anti-CSRF e erros tipados. */
 export async function api<T>(path: string, init: RequestInit & { json?: unknown } = {}): Promise<T> {
+  // Versão de demonstração estática: sem servidor. O bloco some do bundle normal.
+  if (import.meta.env.VITE_DEMO === "1") return (await import("../demo/mockApi")).demoApi<T>(path, init);
   const headers = new Headers(init.headers);
   headers.set("X-Requested-With", "eclipse-rock");
   headers.set("Accept", "application/json");

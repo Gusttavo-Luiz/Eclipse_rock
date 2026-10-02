@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
+import { SEED_MEMBERS, SEED_SETTINGS } from "../../shared/seed";
 import { config } from "./config";
 
 export type DB = Database.Database;
@@ -163,40 +164,10 @@ const migrations: { name: string; sql: string }[] = [
     // Nada de eventos, números, instrumentos ou contatos inventados.
     name: "002_seed_confirmed_content",
     sql: `
-      INSERT INTO site_settings (key, value) VALUES ('site', json('${JSON.stringify({
-        bandName: "Eclipse Rock",
-        tagline: "Rock 2000s • Pop Punk • Emo",
-        heroText:
-          "Rock 2000s, Pop Punk, Emo e tributo à Pitty. Confira os próximos shows e venha cantar com a gente.",
-        aboutText: [
-          "A Eclipse Rock é uma banda dedicada ao rock dos anos 2000. O repertório passa pelo pop punk, pelo emo e pelos clássicos do rock alternativo que marcaram a era da MTV — e inclui um tributo à Pitty.",
-          "A proposta é transformar cada show em um grande coro: as músicas que tanta gente cantou no quarto, no fone de ouvido e na pista, tocadas ao vivo com a energia que elas pedem.",
-          "Se essas faixas fizeram parte da sua história, o convite está feito: venha cantar com a gente.",
-        ].join("\n\n"),
-        instagram: "eclipserockoficial",
-        youtubeUrl: null,
-        spotifyUrl: null,
-        tiktokUrl: null,
-        facebookUrl: null,
-        whatsapp: null,
-        whatsappMessage: "Olá, Eclipse Rock! Gostaria de saber mais sobre a contratação da banda para um evento.",
-        contactEmail: null,
-        privacyEmail: null,
-        logoId: null,
-        heroImageId: null,
-        aboutImageId: null,
-        ogImageId: null,
-        seoTitle: "Eclipse Rock | Rock 2000s • Pop Punk • Emo",
-        seoDescription:
-          "Eclipse Rock — Rock 2000s, Pop Punk, Emo e tributo à Pitty. Confira os próximos shows e venha cantar com a gente.",
-        siteUrl: "https://eclipserock.com.br",
-      }).replace(/'/g, "''")}'));
+      INSERT INTO site_settings (key, value) VALUES ('site', json('${JSON.stringify(SEED_SETTINGS).replace(/'/g, "''")}'));
 
       INSERT INTO band_members (name, instagram, sort_order, published) VALUES
-        ('Isabella Land', 'itsbellaland', 1, 1),
-        ('M.A.M. Filho', 'mam.filho', 2, 1),
-        ('Mamute Ferreira', 'mamute.ferreira', 3, 1),
-        ('Rodrigo Di', 'rodrigodi', 4, 1);
+        ${SEED_MEMBERS.map((m, i) => `('${m.name.replace(/'/g, "''")}', '${m.instagram}', ${i + 1}, 1)`).join(",\n        ")};
     `,
   },
   {

@@ -2,9 +2,21 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
 
+// Demonstração estática (GitHub Pages): VITE_DEMO=1 e VITE_BASE=/<repositório>/.
+const demo = process.env.VITE_DEMO === "1";
+
 export default defineConfig({
   root: "client",
-  plugins: [react(), tailwindcss()],
+  base: process.env.VITE_BASE || "/",
+  plugins: [
+    react(),
+    tailwindcss(),
+    // A demonstração não deve aparecer no Google (o site oficial é o publicado).
+    demo && {
+      name: "demo-noindex",
+      transformIndexHtml: (html: string) => html.replace("<!--app-head-->", '<meta name="robots" content="noindex, nofollow" />'),
+    },
+  ],
   build: {
     outDir: "../dist/client",
     emptyOutDir: true,

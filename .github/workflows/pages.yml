@@ -1,0 +1,52 @@
+# Publica a versão de demonstração estática (site público, sem servidor) no GitHub Pages.
+# O site oficial, com painel e formulário funcionando, é o publicado no Render.
+name: Demonstração (GitHub Pages)
+
+on:
+  push:
+    branches: [main, claude/eloquent-euler-t7ofvs]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      - name: Build da demonstração
+        run: npm run build:client
+        env:
+          VITE_DEMO: "1"
+          VITE_BASE: /${{ github.event.repository.name }}/
+      # Links diretos (ex.: /shows) caem no 404.html, que carrega o mesmo app.
+      - run: cp dist/client/index.html dist/client/404.html
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist/client
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

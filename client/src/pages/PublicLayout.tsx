@@ -17,6 +17,11 @@ export function PublicLayout() {
         Pular para o conteúdo
       </a>
       <div className="flex min-h-[100svh] flex-col">
+        {import.meta.env.VITE_DEMO === "1" && (
+          <p role="note" className="border-b border-warn/40 bg-warn/10 px-4 py-2 text-center text-sm text-moon">
+            Versão de demonstração: o formulário e o painel funcionam só na versão publicada.
+          </p>
+        )}
         <Header />
         <main id="conteudo" tabIndex={-1} className="flex-1 outline-none">
           <Outlet />

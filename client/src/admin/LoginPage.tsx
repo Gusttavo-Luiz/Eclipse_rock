@@ -61,9 +61,9 @@ export function LoginPage() {
         </button>
       </form>
       <div className="mt-6 flex flex-wrap justify-between gap-3 text-sm">
-        <a href="/" className="text-mist hover:text-moon">
+        <Link to="/" className="text-mist hover:text-moon">
           Voltar ao site
-        </a>
+        </Link>
         {canReset && (
           <Link to="/admin/esqueci-senha" state={{ email }} className="text-violet-soft underline underline-offset-2 hover:text-moon">
             Esqueci minha senha
