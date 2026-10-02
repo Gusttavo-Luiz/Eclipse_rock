@@ -199,6 +199,15 @@ const migrations: { name: string; sql: string }[] = [
         ('Rodrigo Di', 'rodrigodi', 4, 1);
     `,
   },
+  {
+    // Resultado do aviso por e-mail enviado à equipe quando chega uma solicitação.
+    name: "003_booking_notifications",
+    sql: `
+      ALTER TABLE booking_requests ADD COLUMN notify_status TEXT CHECK (notify_status IN ('sent','failed','skipped'));
+      ALTER TABLE booking_requests ADD COLUMN notify_detail TEXT;
+      ALTER TABLE booking_requests ADD COLUMN notified_at TEXT;
+    `,
+  },
 ];
 
 export function openDb(file = path.join(config.dataDir, "eclipse-rock.sqlite")): DB {

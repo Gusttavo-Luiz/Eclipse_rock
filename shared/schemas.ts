@@ -77,6 +77,20 @@ const email = z
   .max(254)
   .refine((v) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v), "E-mail inválido.");
 
+const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v);
+
+/** Lista de e-mails separados por vírgula, ponto e vírgula ou espaço (ou já em array). */
+const emailList = z
+  .union([z.string().max(1000), z.array(z.string().max(254))])
+  .optional()
+  .nullable()
+  .transform((v) =>
+    (Array.isArray(v) ? v : (v ?? "").split(/[\s,;]+/)).map((s) => s.trim().toLowerCase()).filter(Boolean),
+  )
+  .refine((l) => l.every(isEmail), "Há um e-mail inválido na lista.")
+  .transform((l) => [...new Set(l)])
+  .refine((l) => l.length <= 5, "Informe no máximo 5 e-mails.");
+
 const id = z.coerce.number().int().positive();
 const optionalId = z
   .union([z.coerce.number().int().positive(), z.null(), z.literal("")])
@@ -249,6 +263,8 @@ export const settingsInput = z.object({
     .nullable()
     .transform((v) => (v ? v : null))
     .refine((v) => v === null || /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v), "E-mail inválido."),
+  /** Quem recebe o aviso de nova solicitação. Vazio = usa o e-mail comercial. Não é exposto no site. */
+  notifyEmails: emailList,
   logoId: optionalId,
   heroImageId: optionalId,
   aboutImageId: optionalId,

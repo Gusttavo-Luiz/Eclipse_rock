@@ -7,6 +7,7 @@ import {
   type BookingRequest,
   type EventItem,
   type GalleryImage,
+  type NotifyStatus,
   type PublicSettings,
   type VideoItem,
 } from "../../shared/types";
@@ -22,7 +23,13 @@ export function getStoredSettings(db: DB): StoredSettings {
   return (row ? JSON.parse(row.value) : {}) as StoredSettings;
 }
 
-export function getAdminSettings(db: DB): AdminSettings {
+/** Destinatários do aviso de nova solicitação: lista configurada ou, se vazia, o e-mail comercial. */
+export function notifyRecipients(s: Pick<AdminSettings, "notifyEmails" | "contactEmail">): string[] {
+  if (s.notifyEmails.length) return s.notifyEmails;
+  return s.contactEmail ? [s.contactEmail] : [];
+}
+
+export function getAdminSettings(db: DB): Omit<AdminSettings, "mail"> {
   const s = getStoredSettings(db);
   const imgs = loadImages(db, [s.logoId as number, s.heroImageId as number, s.aboutImageId as number, s.ogImageId as number]);
   const img = (id: unknown) => (typeof id === "number" ? imgs.get(id) ?? null : null);
@@ -40,6 +47,7 @@ export function getAdminSettings(db: DB): AdminSettings {
     whatsappMessage: (s.whatsappMessage as string) ?? null,
     contactEmail: (s.contactEmail as string) ?? null,
     privacyEmail: (s.privacyEmail as string) ?? null,
+    notifyEmails: Array.isArray(s.notifyEmails) ? (s.notifyEmails as string[]) : [],
     logo: img(s.logoId),
     heroImage: img(s.heroImageId),
     aboutImage: img(s.aboutImageId),
@@ -55,8 +63,8 @@ export function getAdminSettings(db: DB): AdminSettings {
 }
 
 export function getPublicSettings(db: DB): PublicSettings {
-  const { logoId, heroImageId, aboutImageId, ogImageId, ...pub } = getAdminSettings(db);
-  void logoId, heroImageId, aboutImageId, ogImageId;
+  const { logoId, heroImageId, aboutImageId, ogImageId, notifyEmails, ...pub } = getAdminSettings(db);
+  void logoId, heroImageId, aboutImageId, ogImageId, notifyEmails;
   return pub;
 }
 
@@ -285,6 +293,9 @@ export interface BookingRow {
   audience: number | null;
   message: string | null;
   status: BookingStatus;
+  notify_status: NotifyStatus | null;
+  notify_detail: string | null;
+  notified_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -303,6 +314,9 @@ export const mapBooking = (r: BookingRow): BookingRequest => ({
   audience: r.audience,
   message: r.message,
   status: r.status,
+  notification: r.notify_status
+    ? { status: r.notify_status, detail: r.notify_detail, at: r.notified_at ?? r.created_at }
+    : null,
   createdAt: r.created_at,
   updatedAt: r.updated_at,
 });

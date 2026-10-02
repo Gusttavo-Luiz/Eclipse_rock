@@ -28,6 +28,9 @@ const ACTION_LABEL: Record<string, string> = {
   status: "alterou status",
   note: "comentou",
   upload: "enviou",
+  notify: "reenviou o aviso da",
+  notify_failed: "não conseguiu avisar por e-mail sobre a",
+  test_email: "testou o e-mail em",
 };
 
 export function Dashboard() {

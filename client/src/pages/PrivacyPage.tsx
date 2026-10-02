@@ -70,7 +70,8 @@ export function PrivacyPage() {
           <h2>Com quem compartilhamos</h2>
           <p>
             Os dados ficam disponíveis apenas para a equipe autorizada da banda, no painel administrativo protegido por senha, e no provedor
-            de hospedagem do site. Não compartilhamos com terceiros para fins comerciais.
+            de hospedagem do site. Quando uma solicitação chega, a equipe recebe um aviso por e-mail com os dados informados, enviado por
+            meio de um provedor de e-mail contratado pela banda. Não compartilhamos com terceiros para fins comerciais.
           </p>
         </section>
 

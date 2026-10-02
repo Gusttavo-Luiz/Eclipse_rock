@@ -1,9 +1,11 @@
+import { CheckCircle2, Send, TriangleAlert } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { settingsInput } from "../../../../shared/schemas";
 import type { AdminSettings, ImageRef } from "../../../../shared/types";
 import { Field } from "../../components/Field";
 import { LoadingState } from "../../components/States";
-import { apiSend } from "../../lib/api";
+import { useToast } from "../../components/Toast";
+import { ApiError, apiSend } from "../../lib/api";
 import { formatPhone } from "../../lib/format";
 import { useSeo } from "../../lib/seo";
 import { useApi } from "../../lib/useApi";
@@ -27,6 +29,7 @@ const EMPTY = {
   whatsappMessage: "",
   contactEmail: "",
   privacyEmail: "",
+  notifyEmails: "",
   logoId: null as number | null,
   heroImageId: null as number | null,
   aboutImageId: null as number | null,
@@ -40,6 +43,8 @@ export function SettingsAdmin() {
   const res = useApi<AdminSettings>("/api/admin/settings");
   const form = useAdminForm(EMPTY);
   const [imgs, setImgs] = useState<Record<ImgKey, ImageRef | null>>({ logo: null, heroImage: null, aboutImage: null, ogImage: null });
+  const [testing, setTesting] = useState(false);
+  const toast = useToast();
   useSeo("Configurações | Painel Eclipse Rock");
 
   useEffect(() => {
@@ -47,6 +52,7 @@ export function SettingsAdmin() {
     if (!s) return;
     const out = { ...EMPTY } as Record<string, unknown>;
     for (const k of Object.keys(EMPTY)) out[k] = (s as unknown as Record<string, unknown>)[k] ?? (k.endsWith("Id") ? null : "");
+    out.notifyEmails = s.notifyEmails.join(", ");
     form.setValues(out as typeof EMPTY);
     setImgs({ logo: s.logo, heroImage: s.heroImage, aboutImage: s.aboutImage, ogImage: s.ogImage });
   }, [res.data]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -80,6 +86,21 @@ export function SettingsAdmin() {
     const saved = await form.submit(settingsInput, (vals) => apiSend<AdminSettings>("PUT", "/api/admin/settings", vals), "Configurações salvas. O site já reflete as mudanças.");
     if (saved) res.setData(() => saved);
   }
+
+  async function sendTest() {
+    if (testing) return;
+    setTesting(true);
+    try {
+      const r = await apiSend<{ to: string[] }>("POST", "/api/admin/settings/test-email");
+      toast(`E-mail de teste enviado para ${r.to.join(", ")}. Confira a caixa de entrada e o spam.`);
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : "Erro ao enviar o teste.", "error");
+    } finally {
+      setTesting(false);
+    }
+  }
+
+  const mail = res.data!.mail;
 
   const Section = ({ id, title, children, desc }: { id: string; title: string; desc?: string; children: React.ReactNode }) => (
     <section className="surface p-5 sm:p-6" aria-labelledby={id}>
@@ -176,6 +197,57 @@ export function SettingsAdmin() {
               <Field label="E-mail para privacidade (LGPD)" error={e.privacyEmail} hint="Canal para pedidos de acesso ou exclusão de dados. Se vazio, usa o e-mail comercial.">
                 <input {...bind("privacyEmail")} type="email" />
               </Field>
+            </>
+          ),
+        })}
+
+        {Section({
+          id: "s-avisos",
+          title: "Avisos de novas solicitações",
+          desc: "A cada pedido de contratação enviado pelo site, a equipe recebe um e-mail com os dados e um link para o painel. Responder o e-mail fala direto com o contratante.",
+          children: (
+            <>
+              <Field
+                label="E-mails que recebem os avisos"
+                error={e.notifyEmails}
+                className="sm:col-span-2"
+                hint="Até 5 endereços, separados por vírgula. Não aparecem no site. Se vazio, usa o e-mail comercial."
+              >
+                <input {...bind("notifyEmails")} placeholder="contato@eclipserock.com.br, produtor@exemplo.com" autoComplete="off" />
+              </Field>
+              <div className="sm:col-span-2 flex flex-col gap-3 rounded-lg border border-line p-4 sm:flex-row sm:items-center sm:justify-between">
+                {mail.provider ? (
+                  <p className="flex items-start gap-2 text-sm">
+                    <CheckCircle2 size={18} className="mt-0.5 shrink-0 text-ok" aria-hidden />
+                    <span>
+                      Envio ativo ({mail.provider === "smtp" ? "SMTP" : mail.provider === "resend" ? "Resend" : mail.provider}), remetente{" "}
+                      <span className="break-all">{mail.from}</span>.{" "}
+                      {mail.recipients.length ? (
+                        <span className="text-mist">Destinatários salvos: {mail.recipients.join(", ")}.</span>
+                      ) : (
+                        <span className="text-warn">Nenhum destinatário salvo ainda.</span>
+                      )}
+                    </span>
+                  </p>
+                ) : (
+                  <p className="flex items-start gap-2 text-sm">
+                    <TriangleAlert size={18} className="mt-0.5 shrink-0 text-warn" aria-hidden />
+                    <span>
+                      O envio de e-mail ainda não foi configurado no servidor. As solicitações continuam chegando no painel. Para ativar, quem
+                      cuida da hospedagem define <code>MAIL_FROM</code> e <code>RESEND_API_KEY</code> (ou os dados de SMTP).
+                    </span>
+                  </p>
+                )}
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm shrink-0"
+                  onClick={sendTest}
+                  disabled={!mail.provider || !mail.recipients.length || testing}
+                  title="Usa a configuração já salva"
+                >
+                  <Send size={16} aria-hidden /> {testing ? "Enviando…" : "Enviar e-mail de teste"}
+                </button>
+              </div>
             </>
           ),
         })}

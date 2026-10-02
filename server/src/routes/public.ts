@@ -3,9 +3,11 @@ import { bookingInput } from "../../../shared/schemas";
 import { ipKey } from "../auth";
 import type { DB } from "../db";
 import { ah, HttpError, notFound, parse, rateLimit } from "../http";
+import type { Mailer } from "../mailer";
+import { notifyNewBooking } from "../notifications";
 import { getEventBy, getPublicSettings, listGallery, listMembers, listPublicEvents, listVideos } from "../repo";
 
-export function publicRoutes(db: DB) {
+export function publicRoutes(db: DB, mailer: Mailer | null) {
   const r = Router();
 
   // Conteúdo público: cache curto no navegador, sempre revalidado.
@@ -94,7 +96,10 @@ export function publicRoutes(db: DB) {
         Number(result.lastInsertRowid),
         "Nova solicitação de contratação recebida pelo site",
       );
-      res.status(201).json({ ok: true, id: Number(result.lastInsertRowid) });
+      const id = Number(result.lastInsertRowid);
+      res.status(201).json({ ok: true, id });
+      // Aviso à equipe em segundo plano: quem enviou não espera o e-mail e a solicitação já está salva.
+      void notifyNewBooking(db, mailer, id);
     }),
   );
 

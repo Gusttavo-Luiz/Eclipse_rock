@@ -1,4 +1,4 @@
-import { ArrowLeft, Mail, Search, Trash2 } from "lucide-react";
+import { ArrowLeft, Mail, RefreshCw, Search, Trash2 } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { BOOKING_STATUSES, BOOKING_STATUS_LABEL, type BookingStatus } from "../../../../shared/schemas";
@@ -138,6 +138,7 @@ export function BookingDetail() {
   const res = useApi<{ booking: BookingRequest; notes: BookingNote[] }>(`/api/admin/bookings/${id}`);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+  const [resending, setResending] = useState(false);
   useSeo("Solicitação | Painel Eclipse Rock");
 
   if (res.loading) return <LoadingState />;
@@ -170,6 +171,21 @@ export function BookingDetail() {
       toast(err instanceof ApiError ? err.message : "Erro ao salvar.", "error");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function resendNotice() {
+    if (resending) return;
+    setResending(true);
+    try {
+      const updated = await apiSend<BookingRequest>("POST", `/api/admin/bookings/${b.id}/notify`);
+      res.setData((d) => d && { ...d, booking: updated });
+      const st = updated.notification?.status;
+      toast(st === "sent" ? "Aviso reenviado por e-mail." : updated.notification?.detail ?? "Não foi possível enviar o aviso.", st === "sent" ? "success" : "error");
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : "Erro ao reenviar.", "error");
+    } finally {
+      setResending(false);
     }
   }
 
@@ -285,6 +301,28 @@ export function BookingDetail() {
                 </label>
               ))}
             </fieldset>
+          </section>
+          <section className="surface p-5 sm:p-6" aria-labelledby="aviso">
+            <h2 id="aviso" className="font-semibold">
+              Aviso por e-mail
+            </h2>
+            <p className="mt-2 text-sm" role="status">
+              {!b.notification ? (
+                <span className="text-mist">Sem registro de envio.</span>
+              ) : b.notification.status === "sent" ? (
+                <span className="text-ok">Enviado em {dateTime(b.notification.at)}.</span>
+              ) : b.notification.status === "failed" ? (
+                <span className="text-danger">Falhou em {dateTime(b.notification.at)}.</span>
+              ) : (
+                <span className="text-mist">Não enviado.</span>
+              )}
+            </p>
+            {b.notification?.detail && <p className="mt-1 break-words text-xs text-mist">{b.notification.detail}</p>}
+            {b.notification?.status !== "sent" && (
+              <button type="button" className="btn btn-ghost btn-sm mt-4" onClick={resendNotice} disabled={resending}>
+                <RefreshCw size={16} aria-hidden /> {resending ? "Enviando…" : "Tentar enviar de novo"}
+              </button>
+            )}
           </section>
           {user?.role === "admin" && (
             <button type="button" className="btn btn-danger btn-sm w-full" onClick={remove}>

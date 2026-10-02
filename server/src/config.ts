@@ -27,11 +27,28 @@ export const config = {
   appSecret: env.APP_SECRET ?? (isProd ? "" : "dev-only-secret-change-me"),
   maxUploadMb: Number(env.MAX_UPLOAD_MB ?? 10),
   clientDist: path.resolve(env.CLIENT_DIST ?? "dist/client"),
+  /** E-mail transacional (avisos de novas solicitações). Sem provedor configurado, nada é enviado. */
+  mail: {
+    /** Remetente, ex.: "Eclipse Rock <avisos@eclipserock.com.br>". O domínio precisa estar verificado no provedor. */
+    from: env.MAIL_FROM?.trim() ?? "",
+    resendApiKey: env.RESEND_API_KEY?.trim() ?? "",
+    smtp: {
+      host: env.SMTP_HOST?.trim() ?? "",
+      port: Number(env.SMTP_PORT ?? 587),
+      /** true para a porta 465 (TLS direto); na 587 o STARTTLS é negociado automaticamente. */
+      secure: env.SMTP_SECURE ? env.SMTP_SECURE === "true" || env.SMTP_SECURE === "1" : Number(env.SMTP_PORT) === 465,
+      user: env.SMTP_USER ?? "",
+      pass: env.SMTP_PASS ?? "",
+    },
+  },
 };
 
 export function assertProductionConfig() {
   if (!config.isProd) return;
   if (!config.appSecret || config.appSecret.length < 32) {
     throw new Error("APP_SECRET ausente ou curto (mín. 32 caracteres). Defina-o nas variáveis de ambiente.");
+  }
+  if ((config.mail.resendApiKey || config.mail.smtp.host) && !config.mail.from) {
+    throw new Error("MAIL_FROM ausente. Defina o remetente dos e-mails (ex.: Eclipse Rock <avisos@seudominio.com.br>).");
   }
 }

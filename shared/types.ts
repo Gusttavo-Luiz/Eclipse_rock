@@ -46,7 +46,18 @@ export interface PublicSettings {
   siteUrl: string;
 }
 
+export interface MailStatus {
+  /** Provedor configurado no servidor (variáveis de ambiente) ou null se o envio estiver desligado. */
+  provider: "resend" | "smtp" | "test" | null;
+  from: string | null;
+  /** Destinatários efetivos do aviso: notifyEmails ou, se vazio, o e-mail comercial. */
+  recipients: string[];
+}
+
 export interface AdminSettings extends PublicSettings {
+  /** Destinatários do aviso de nova solicitação (somente painel). */
+  notifyEmails: string[];
+  mail: MailStatus;
   logoId: number | null;
   heroImageId: number | null;
   aboutImageId: number | null;
@@ -128,9 +139,14 @@ export interface BookingRequest {
   audience: number | null;
   message: string | null;
   status: BookingStatus;
+  /** Resultado do aviso por e-mail à equipe. null = ainda não processado. */
+  notification: { status: NotifyStatus; detail: string | null; at: string } | null;
   createdAt: string;
   updatedAt: string;
 }
+
+/** sent = enviado; failed = o provedor recusou ou não respondeu; skipped = envio não configurado. */
+export type NotifyStatus = "sent" | "failed" | "skipped";
 
 export interface BookingNote {
   id: number;

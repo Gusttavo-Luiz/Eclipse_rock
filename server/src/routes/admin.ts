@@ -17,11 +17,20 @@ import {
   videoInput,
   youtubeId,
 } from "../../../shared/schemas";
-import { todayISO, type AuditEntry, type BookingNote, type DashboardData, type User } from "../../../shared/types";
+import {
+  todayISO,
+  type AdminSettings,
+  type AuditEntry,
+  type BookingNote,
+  type DashboardData,
+  type User,
+} from "../../../shared/types";
 import { audit, hashPassword, requireAuth, requireRole } from "../auth";
 import { config } from "../config";
 import type { DB } from "../db";
 import { ah, HttpError, intParam, notFound, parse } from "../http";
+import type { Mailer } from "../mailer";
+import { esc, notifyNewBooking } from "../notifications";
 import {
   getAdminSettings,
   getEventBy,
@@ -31,6 +40,7 @@ import {
   listVideos,
   mapBooking,
   mapEvents,
+  notifyRecipients,
   uniqueEventSlug,
   type BookingRow,
 } from "../repo";
@@ -38,8 +48,16 @@ import { assertUploadExists, storeImage } from "../uploads";
 
 const now = () => new Date().toISOString();
 
-export function adminRoutes(db: DB) {
+export function adminRoutes(db: DB, mailer: Mailer | null) {
   const r = Router();
+
+  const settingsResponse = (): AdminSettings => {
+    const s = getAdminSettings(db);
+    return {
+      ...s,
+      mail: { provider: mailer?.provider ?? null, from: mailer?.from ?? null, recipients: notifyRecipients(s) },
+    };
+  };
   r.use(requireAuth);
   r.use((_req, res, next) => {
     res.setHeader("Cache-Control", "no-store");
@@ -429,6 +447,20 @@ export function adminRoutes(db: DB) {
     }),
   );
 
+  /** Reenvia o aviso por e-mail (ex.: depois de corrigir a configuração). */
+  r.post(
+    "/bookings/:id/notify",
+    content,
+    ah(async (req, res) => {
+      const id = intParam(req.params.id);
+      if (!db.prepare("SELECT 1 FROM booking_requests WHERE id=?").get(id)) throw notFound("Solicitação");
+      const status = await notifyNewBooking(db, mailer, id);
+      if (status === "sent") audit(db, req, "notify", "booking", id, "Aviso por e-mail reenviado");
+      const row = db.prepare("SELECT * FROM booking_requests WHERE id = ?").get(id) as BookingRow;
+      res.json(mapBooking(row));
+    }),
+  );
+
   r.post(
     "/bookings/:id/notes",
     content,
@@ -457,7 +489,7 @@ export function adminRoutes(db: DB) {
   );
 
   // ---------- Configurações ----------
-  r.get("/settings", content, ah((_req, res) => res.json(getAdminSettings(db))));
+  r.get("/settings", content, ah((_req, res) => res.json(settingsResponse())));
 
   r.put(
     "/settings",
@@ -470,7 +502,34 @@ export function adminRoutes(db: DB) {
         "INSERT INTO site_settings (key, value, updated_at) VALUES ('site', ?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at",
       ).run(JSON.stringify(merged), now());
       audit(db, req, "update", "settings", null, "Configurações do site atualizadas");
-      res.json(getAdminSettings(db));
+      res.json(settingsResponse());
+    }),
+  );
+
+  /** Envia um e-mail de teste para os destinatários dos avisos (configuração já salva). */
+  r.post(
+    "/settings/test-email",
+    adminOnly,
+    ah(async (req, res) => {
+      if (!mailer) {
+        throw new HttpError(409, "O envio de e-mail não está configurado no servidor. Defina MAIL_FROM e RESEND_API_KEY (ou SMTP_*).");
+      }
+      const s = getAdminSettings(db);
+      const to = notifyRecipients(s);
+      if (!to.length) throw new HttpError(422, "Salve ao menos um e-mail para avisos (ou o e-mail comercial) antes de testar.");
+      try {
+        await mailer.send({
+          to,
+          subject: `Teste de aviso — ${s.bandName}`,
+          text: `Este é um e-mail de teste do painel da ${s.bandName}.\n\nSe você recebeu, os avisos de novas solicitações de contratação vão chegar neste endereço.`,
+          html: `<p>Este é um e-mail de teste do painel da <strong>${esc(s.bandName)}</strong>.</p><p>Se você recebeu, os avisos de novas solicitações de contratação vão chegar neste endereço.</p>`,
+        });
+      } catch (err) {
+        console.error("[aviso] falha no e-mail de teste:", err instanceof Error ? err.message : err);
+        throw new HttpError(502, `O provedor de e-mail recusou o envio: ${err instanceof Error ? err.message : "erro desconhecido"}`);
+      }
+      audit(db, req, "test_email", "settings", null, "E-mail de teste de avisos enviado");
+      res.json({ ok: true, to });
     }),
   );
 

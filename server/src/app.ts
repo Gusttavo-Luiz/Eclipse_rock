@@ -8,13 +8,15 @@ import { csrfGuard, loadUser } from "./auth";
 import { config } from "./config";
 import type { DB } from "./db";
 import { errorHandler, HttpError } from "./http";
+import { createMailer, type Mailer } from "./mailer";
 import { adminRoutes } from "./routes/admin";
 import { authRoutes } from "./routes/auth";
 import { publicRoutes } from "./routes/public";
 import { renderHead, resolveHead, robots, sitemap } from "./seo";
 import { uploadsDir } from "./uploads";
 
-export function createApp(db: DB, opts: { serveClient?: boolean } = {}) {
+export function createApp(db: DB, opts: { serveClient?: boolean; mailer?: Mailer | null } = {}) {
+  const mailer = opts.mailer !== undefined ? opts.mailer : createMailer();
   const app = express();
   app.disable("x-powered-by");
   app.set("trust proxy", config.trustProxy);
@@ -66,9 +68,9 @@ export function createApp(db: DB, opts: { serveClient?: boolean } = {}) {
 
   const api = express.Router();
   api.use(loadUser(db));
-  api.use("/public", publicRoutes(db));
+  api.use("/public", publicRoutes(db, mailer));
   api.use("/auth", csrfGuard, authRoutes(db));
-  api.use("/admin", csrfGuard, adminRoutes(db));
+  api.use("/admin", csrfGuard, adminRoutes(db, mailer));
   api.use((_req, _res, next) => next(new HttpError(404, "Rota não encontrada.")));
   app.use("/api", api);
 
