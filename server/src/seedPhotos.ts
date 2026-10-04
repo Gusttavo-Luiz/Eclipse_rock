@@ -5,7 +5,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { SEED_ABOUT_PHOTO, SEED_GALLERY, SEED_MEMBERS } from "../../shared/seed";
+import { SEED_ABOUT_PHOTO, SEED_GALLERY_BATCHES, SEED_MEMBERS } from "../../shared/seed";
 import { config } from "./config";
 import type { DB } from "./db";
 import { getStoredSettings } from "./repo";
@@ -42,35 +42,38 @@ export async function seedMemberPhotos(db: DB, dir = path.join(config.seedDir, "
   return imported;
 }
 
-/** Galeria e foto da seção "A banda". Retorna quantas fotos entraram na galeria. */
+/**
+ * Galeria (lote a lote, cada um uma única vez) e foto da seção "A banda".
+ * Fotos de lotes novos entram depois das que já estão na galeria. Retorna quantas fotos entraram.
+ */
 export async function seedGalleryPhotos(db: DB, dir = path.join(config.seedDir, "gallery")): Promise<number> {
-  const MARKER = "seed:gallery_v1";
-  if (done(db, MARKER)) return 0;
-  const ids = new Map<string, number>();
   let imported = 0;
-  const order = (db.prepare("SELECT COALESCE(MAX(sort_order), 0) n FROM gallery_images").get() as { n: number }).n;
-  for (const [i, g] of SEED_GALLERY.entries()) {
-    const buf = read(path.join(dir, g.file));
-    if (!buf) continue;
-    const img = await storeImage(db, buf, g.file, null);
-    ids.set(g.file, img.id);
-    db.prepare("INSERT INTO gallery_images (upload_id, alt, category, sort_order, published) VALUES (?, ?, ?, ?, 1)").run(
-      img.id,
-      g.alt,
-      g.category,
-      order + i + 1,
-    );
-    imported++;
+  for (const batch of SEED_GALLERY_BATCHES) {
+    if (done(db, batch.marker)) continue;
+    let order = (db.prepare("SELECT COALESCE(MAX(sort_order), 0) n FROM gallery_images").get() as { n: number }).n;
+    for (const g of batch.photos) {
+      const buf = read(path.join(dir, g.file));
+      if (!buf) continue;
+      const img = await storeImage(db, buf, g.file, null);
+      db.prepare("INSERT INTO gallery_images (upload_id, alt, category, sort_order, published) VALUES (?, ?, ?, ?, 1)").run(
+        img.id,
+        g.alt,
+        g.category,
+        ++order,
+      );
+      if (g.file === SEED_ABOUT_PHOTO) {
+        const settings = getStoredSettings(db);
+        if (!settings.aboutImageId) {
+          db.prepare("UPDATE site_settings SET value = ?, updated_at = ? WHERE key = 'site'").run(
+            JSON.stringify({ ...settings, aboutImageId: img.id }),
+            new Date().toISOString(),
+          );
+        }
+      }
+      imported++;
+    }
+    mark(db, batch.marker);
   }
-  const aboutId = ids.get(SEED_ABOUT_PHOTO);
-  const settings = getStoredSettings(db);
-  if (aboutId && !settings.aboutImageId) {
-    db.prepare("UPDATE site_settings SET value = ?, updated_at = ? WHERE key = 'site'").run(
-      JSON.stringify({ ...settings, aboutImageId: aboutId }),
-      new Date().toISOString(),
-    );
-  }
-  mark(db, MARKER);
   if (imported) console.log(`[conteúdo inicial] ${imported} foto(s) da galeria importada(s).`);
   return imported;
 }

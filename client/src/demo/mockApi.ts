@@ -14,6 +14,11 @@ import isabellaPalco from "../../../server/seed/gallery/isabella-palco.webp";
 import mamuteBaixo from "../../../server/seed/gallery/mamute-baixo.webp";
 import mauroGuitarra from "../../../server/seed/gallery/mauro-guitarra.webp";
 import rodrigoBateria from "../../../server/seed/gallery/rodrigo-bateria.webp";
+import isabellaCantando from "../../../server/seed/gallery/isabella-cantando.webp";
+import isabellaPb from "../../../server/seed/gallery/isabella-pb.webp";
+import mauroPalco from "../../../server/seed/gallery/mauro-palco.webp";
+import rodrigoEclipse from "../../../server/seed/gallery/rodrigo-eclipse.webp";
+import rodrigoRock from "../../../server/seed/gallery/rodrigo-rock.webp";
 import { ApiError } from "../lib/api";
 
 export const DEMO_NOTICE =
@@ -38,6 +43,11 @@ const PHOTOS: Record<string, { src: string; width: number; height: number }> = {
   "mauro-guitarra.webp": { src: mauroGuitarra, width: 433, height: 655 },
   "rodrigo-bateria.webp": { src: rodrigoBateria, width: 436, height: 653 },
   "mamute-baixo.webp": { src: mamuteBaixo, width: 436, height: 649 },
+  "isabella-cantando.webp": { src: isabellaCantando, width: 935, height: 618 },
+  "mauro-palco.webp": { src: mauroPalco, width: 886, height: 655 },
+  "rodrigo-rock.webp": { src: rodrigoRock, width: 672, height: 641 },
+  "isabella-pb.webp": { src: isabellaPb, width: 424, height: 654 },
+  "rodrigo-eclipse.webp": { src: rodrigoEclipse, width: 432, height: 653 },
 };
 
 function photo(file: string | null, id: number): ImageRef | null {

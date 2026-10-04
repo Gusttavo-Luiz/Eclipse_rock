@@ -40,18 +40,46 @@ export const SEED_MEMBERS: { name: string; instagram: string; monogram: string |
   { name: "Rodrigo", instagram: "rodrigodi", monogram: null, photo: "rodrigo.webp" },
 ];
 
-/** Fotos da galeria enviadas pela banda (arquivos em server/seed/gallery/), na ordem de exibição. */
-export const SEED_GALLERY: { file: string; alt: string; category: string }[] = [
-  { file: "isabella-palco.webp", alt: "Isabella sorrindo ao microfone no palco", category: "Ao vivo" },
-  { file: "mauro-guitarra.webp", alt: "Mauro tocando guitarra no palco, em preto e branco", category: "Ao vivo" },
-  { file: "rodrigo-bateria.webp", alt: "Rodrigo na bateria sob luz vermelha", category: "Ao vivo" },
-  { file: "mamute-baixo.webp", alt: "Mamute com o baixo no palco", category: "Ao vivo" },
+export interface SeedGalleryPhoto {
+  file: string;
+  alt: string;
+  category: string;
+}
+
+/**
+ * Fotos da galeria enviadas pela banda (arquivos em server/seed/gallery/), em lotes na ordem de exibição.
+ * Cada lote é importado uma única vez (pelo seu marcador): para incluir fotos novas, crie um lote novo
+ * em vez de editar um lote que já pode ter sido importado.
+ */
+export const SEED_GALLERY_BATCHES: { marker: string; photos: SeedGalleryPhoto[] }[] = [
   {
-    file: "banda.webp",
-    alt: "Mamute, Mauro, Isabella e Rodrigo reunidos em um sofá diante de uma janela em arco",
-    category: "Banda",
+    marker: "seed:gallery_v1",
+    photos: [
+      { file: "isabella-palco.webp", alt: "Isabella sorrindo ao microfone no palco", category: "Ao vivo" },
+      { file: "mauro-guitarra.webp", alt: "Mauro tocando guitarra no palco, em preto e branco", category: "Ao vivo" },
+      { file: "rodrigo-bateria.webp", alt: "Rodrigo na bateria sob luz vermelha", category: "Ao vivo" },
+      { file: "mamute-baixo.webp", alt: "Mamute com o baixo no palco", category: "Ao vivo" },
+      {
+        file: "banda.webp",
+        alt: "Mamute, Mauro, Isabella e Rodrigo reunidos em um sofá diante de uma janela em arco",
+        category: "Banda",
+      },
+    ],
+  },
+  {
+    marker: "seed:gallery_v2",
+    photos: [
+      { file: "isabella-cantando.webp", alt: "Isabella cantando de olhos fechados, segurando um microfone vintage", category: "Ao vivo" },
+      { file: "mauro-palco.webp", alt: "Mauro tocando guitarra no palco sob luz roxa", category: "Ao vivo" },
+      { file: "rodrigo-rock.webp", alt: "Rodrigo atrás da bateria fazendo o sinal do rock", category: "Ao vivo" },
+      { file: "isabella-pb.webp", alt: "Isabella de perfil ao microfone, em preto e branco", category: "Ao vivo" },
+      { file: "rodrigo-eclipse.webp", alt: "Rodrigo sorrindo na bateria sob luz azul, com camiseta da Eclipse", category: "Ao vivo" },
+    ],
   },
 ];
+
+/** Todas as fotos da galeria, na ordem de exibição. */
+export const SEED_GALLERY: SeedGalleryPhoto[] = SEED_GALLERY_BATCHES.flatMap((b) => b.photos);
 
 /** Foto da seção "A banda" (um dos arquivos de SEED_GALLERY). */
 export const SEED_ABOUT_PHOTO = "banda.webp";

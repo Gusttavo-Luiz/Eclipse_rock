@@ -6,6 +6,7 @@ import request from "supertest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../src/app";
 import { openDb, type DB } from "../src/db";
+import { SEED_GALLERY, SEED_GALLERY_BATCHES } from "../../shared/seed";
 import { seedGalleryPhotos, seedMemberPhotos } from "../src/seedPhotos";
 
 const dbs: DB[] = [];
@@ -83,13 +84,14 @@ describe("fotos do conteúdo inicial", () => {
     fs.rmSync(dir, { recursive: true, force: true });
   });
 
-  it("galeria: importa as 5 fotos na ordem, com texto alternativo e categoria, e usa a foto do grupo em \"A banda\"", async () => {
+  it("galeria: importa as fotos na ordem, com texto alternativo e categoria, e usa a foto do grupo em \"A banda\"", async () => {
     vi.spyOn(console, "log").mockImplementation(() => {});
     const db = fresh();
-    expect(await seedGalleryPhotos(db)).toBe(5);
+    expect(await seedGalleryPhotos(db)).toBe(SEED_GALLERY.length);
     const app = createApp(db, { mailer: null });
     const gallery = (await request(app).get("/api/public/gallery")).body as { alt: string; category: string; image: { id: number; width: number; height: number } }[];
-    expect(gallery.map((g) => g.category)).toEqual(["Ao vivo", "Ao vivo", "Ao vivo", "Ao vivo", "Banda"]);
+    expect(gallery.map((g) => g.alt)).toEqual(SEED_GALLERY.map((g) => g.alt));
+    expect(gallery[4].category).toBe("Banda");
     expect(gallery.every((g) => g.alt.length > 10)).toBe(true);
     const settings = (await request(app).get("/api/public/settings")).body as { aboutImage: { id: number; width: number; height: number } };
     expect(settings.aboutImage.id).toBe(gallery[4].image.id);
@@ -98,7 +100,21 @@ describe("fotos do conteúdo inicial", () => {
     // uma vez só: não duplica nem recoloca
     db.prepare("DELETE FROM gallery_images WHERE category = 'Banda'").run();
     expect(await seedGalleryPhotos(db)).toBe(0);
-    expect((db.prepare("SELECT COUNT(*) n FROM gallery_images").get() as { n: number }).n).toBe(4);
+    expect((db.prepare("SELECT COUNT(*) n FROM gallery_images").get() as { n: number }).n).toBe(SEED_GALLERY.length - 1);
+  });
+
+  it("galeria: site que já importou o 1º lote recebe só as fotos novas, no fim, sem mexer no resto", async () => {
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    const db = fresh();
+    // simula um site no ar antes do 2º lote, com uma foto própria enviada pelo painel e a 1ª do lote removida
+    db.prepare("INSERT INTO schema_migrations (name) VALUES ('seed:gallery_v1')").run();
+    db.prepare("INSERT INTO uploads (key, width, height, variants, bytes) VALUES ('abc', 400, 500, '[400]', 1)").run();
+    db.prepare("INSERT INTO gallery_images (upload_id, alt, sort_order) VALUES (1, 'Foto enviada pelo painel', 7)").run();
+    const second = SEED_GALLERY_BATCHES[1].photos;
+    expect(await seedGalleryPhotos(db)).toBe(second.length);
+    const rows = db.prepare("SELECT alt FROM gallery_images ORDER BY sort_order, id").all() as { alt: string }[];
+    expect(rows.map((r) => r.alt)).toEqual(["Foto enviada pelo painel", ...second.map((g) => g.alt)]);
+    expect(await seedGalleryPhotos(db)).toBe(0);
   });
 
   it("galeria: não troca a foto de \"A banda\" já escolhida no painel", async () => {

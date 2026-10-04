@@ -14,7 +14,7 @@ O site de referência (`eclipse-rock-hub.base44.app`) é uma aplicação renderi
   - os quatro integrantes com seus perfis: Isabella, Mauro, Mamute e Rodrigo.
 - **Fotos enviadas pela banda**, importadas automaticamente na primeira subida do servidor, pelo mesmo processamento das fotos enviadas no painel:
   - integrantes (recortadas em 4:5, em `server/seed/members/`);
-  - galeria, com texto alternativo e categorias "Ao vivo" e "Banda" (em `server/seed/gallery/`);
+  - galeria, com texto alternativo e categorias "Ao vivo" e "Banda" (em `server/seed/gallery/`), em lotes: cada lote entra uma vez só, e fotos novas vão num lote novo em `shared/seed.ts`, para chegarem também a sites já no ar;
   - a foto do grupo também na seção "A banda" (fotos horizontais aparecem inteiras, sem recorte).
 
   A importação acontece uma vez só: depois, trocar ou remover fotos no painel vale de vez.
