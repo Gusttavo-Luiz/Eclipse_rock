@@ -137,6 +137,14 @@ export const memberInput = z.object({
   name: required(80, "Informe o nome artístico."),
   role: optionalText(80),
   instagram: instagramHandle,
+  /** Sigla exibida no card enquanto não há foto. Vazio = iniciais do nome. */
+  monogram: z
+    .string()
+    .trim()
+    .max(3, "Use até 3 caracteres.")
+    .optional()
+    .nullable()
+    .transform((v) => (v ? v.toUpperCase() : null)),
   photoId: optionalId,
   sortOrder: z.coerce.number().int().min(0).max(999).default(0),
   published: z.boolean(),

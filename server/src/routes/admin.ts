@@ -249,8 +249,8 @@ export function adminRoutes(db: DB, mailer: Mailer | null) {
       const d = parse(memberInput, req.body);
       assertUploadExists(db, d.photoId, "photoId");
       const result = db
-        .prepare("INSERT INTO band_members (name, role, instagram, photo_id, sort_order, published) VALUES (?, ?, ?, ?, ?, ?)")
-        .run(d.name, d.role, d.instagram, d.photoId, d.sortOrder, d.published ? 1 : 0);
+        .prepare("INSERT INTO band_members (name, role, instagram, monogram, photo_id, sort_order, published) VALUES (?, ?, ?, ?, ?, ?, ?)")
+        .run(d.name, d.role, d.instagram, d.monogram, d.photoId, d.sortOrder, d.published ? 1 : 0);
       const id = Number(result.lastInsertRowid);
       audit(db, req, "create", "member", id, d.name);
       res.status(201).json(listMembers(db, false).find((m) => m.id === id));
@@ -265,8 +265,8 @@ export function adminRoutes(db: DB, mailer: Mailer | null) {
       const d = parse(memberInput, req.body);
       assertUploadExists(db, d.photoId, "photoId");
       const result = db
-        .prepare("UPDATE band_members SET name=?, role=?, instagram=?, photo_id=?, sort_order=?, published=?, updated_at=? WHERE id=?")
-        .run(d.name, d.role, d.instagram, d.photoId, d.sortOrder, d.published ? 1 : 0, now(), id);
+        .prepare("UPDATE band_members SET name=?, role=?, instagram=?, monogram=?, photo_id=?, sort_order=?, published=?, updated_at=? WHERE id=?")
+        .run(d.name, d.role, d.instagram, d.monogram, d.photoId, d.sortOrder, d.published ? 1 : 0, now(), id);
       if (!result.changes) throw notFound("Integrante");
       audit(db, req, "update", "member", id, d.name);
       res.json(listMembers(db, false).find((m) => m.id === id));

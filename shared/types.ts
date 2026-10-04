@@ -69,6 +69,8 @@ export interface BandMember {
   name: string;
   role: string | null;
   instagram: string | null;
+  /** Sigla do card sem foto (null = iniciais do nome). */
+  monogram: string | null;
   photo: ImageRef | null;
   photoId: number | null;
   sortOrder: number;

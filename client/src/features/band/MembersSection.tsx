@@ -23,7 +23,7 @@ export function MembersSection({ members }: { members: BandMember[] }) {
   );
 }
 
-function initials(name: string) {
+export function initials(name: string) {
   return name
     .replace(/\./g, " ")
     .split(/\s+/)
@@ -47,7 +47,7 @@ export function BandMemberCard({ member }: { member: BandMember }) {
         ) : (
           <div className="starfield flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_50%_35%,rgb(123_63_228/0.35),transparent_65%)]">
             <span className="display text-[clamp(3.5rem,10vw,6rem)] text-moon/80" aria-hidden>
-              {initials(member.name)}
+              {member.monogram ?? initials(member.name)}
             </span>
           </div>
         )}

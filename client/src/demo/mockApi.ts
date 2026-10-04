@@ -23,6 +23,7 @@ const members: BandMember[] = SEED_MEMBERS.map((m, i) => ({
   name: m.name,
   role: null,
   instagram: m.instagram,
+  monogram: m.monogram,
   photo: null,
   photoId: null,
   sortOrder: i + 1,

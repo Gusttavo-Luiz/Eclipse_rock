@@ -162,6 +162,7 @@ interface MemberRow {
   name: string;
   role: string | null;
   instagram: string | null;
+  monogram: string | null;
   photo_id: number | null;
   sort_order: number;
   published: number;
@@ -177,6 +178,7 @@ export function listMembers(db: DB, publishedOnly: boolean): BandMember[] {
     name: r.name,
     role: r.role,
     instagram: r.instagram,
+    monogram: r.monogram,
     photo: r.photo_id ? imgs.get(r.photo_id) ?? null : null,
     photoId: r.photo_id,
     sortOrder: r.sort_order,

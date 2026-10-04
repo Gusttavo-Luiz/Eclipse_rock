@@ -52,8 +52,22 @@ describe("conteúdo inicial", () => {
       "Mamute",
       "Rodrigo",
     ]);
+    expect(res.body.members.map((m: { monogram: string | null }) => m.monogram)).toEqual([null, "MA", "MM", null]);
     expect(res.body.members.every((m: { role: string | null }) => m.role === null)).toBe(true);
     expect(res.body.upcoming).toEqual([]);
+  });
+
+  it("sigla do card é editável, vira maiúscula e aceita até 3 caracteres", async () => {
+    const admin = await login("editor@teste.com", "SenhaEditor123");
+    const list = (await admin.get("/api/admin/members")).body as { id: number; name: string; instagram: string; sortOrder: number }[];
+    const m = list.find((x) => x.name === "Isabella")!;
+    const base = { name: m.name, instagram: m.instagram, sortOrder: m.sortOrder, published: true };
+    const ok = await admin.put(`/api/admin/members/${m.id}`).set(H).send({ ...base, monogram: "is" });
+    expect(ok.status).toBe(200);
+    expect(ok.body.monogram).toBe("IS");
+    expect((await admin.put(`/api/admin/members/${m.id}`).set(H).send({ ...base, monogram: "ISAB" })).status).toBe(422);
+    const cleared = await admin.put(`/api/admin/members/${m.id}`).set(H).send({ ...base, monogram: "" });
+    expect(cleared.body.monogram).toBeNull();
   });
 });
 

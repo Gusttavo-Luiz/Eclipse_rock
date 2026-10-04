@@ -39,8 +39,8 @@ export function Toggle({
       onClick={() => onChange(!checked)}
       className="inline-flex min-h-[44px] items-center gap-3 rounded-lg text-sm disabled:opacity-50"
     >
-      <span className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${checked ? "bg-ok/80" : "bg-line"}`}>
-        <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-moon shadow transition-transform ${checked ? "translate-x-[22px]" : "translate-x-0.5"}`} />
+      <span className={`relative block h-6 w-11 shrink-0 rounded-full transition-colors ${checked ? "bg-ok/80" : "bg-line"}`}>
+        <span className={`absolute left-0 top-0.5 h-5 w-5 rounded-full bg-moon shadow transition-transform ${checked ? "translate-x-[22px]" : "translate-x-0.5"}`} />
       </span>
       {showLabel && <span>{label}</span>}
       <span className={showLabel ? "text-mist" : "sr-only"}>{checked ? "Publicado" : "Oculto"}</span>

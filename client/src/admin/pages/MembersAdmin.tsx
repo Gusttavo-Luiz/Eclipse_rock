@@ -4,6 +4,7 @@ import { memberInput } from "../../../../shared/schemas";
 import type { BandMember, ImageRef } from "../../../../shared/types";
 import { Field } from "../../components/Field";
 import { InstagramIcon } from "../../components/icons";
+import { initials } from "../../features/band/MembersSection";
 import { Modal, useConfirm } from "../../components/Modal";
 import { EmptyState, LoadingState } from "../../components/States";
 import { useToast } from "../../components/Toast";
@@ -144,6 +145,7 @@ function MemberForm({ member, nextOrder, onSaved, onCancel }: { member: BandMemb
     name: member?.name ?? "",
     role: member?.role ?? "",
     instagram: member?.instagram ?? "",
+    monogram: member?.monogram ?? "",
     photoId: member?.photoId ?? (null as number | null),
     sortOrder: member?.sortOrder ?? nextOrder,
     published: member?.published ?? true,
@@ -181,6 +183,19 @@ function MemberForm({ member, nextOrder, onSaved, onCancel }: { member: BandMemb
         </Field>
         <Field label="Instagram" error={form.errors.instagram} hint="@perfil ou link do perfil.">
           <input className="input" value={v.instagram} onChange={(e) => form.set("instagram", e.target.value)} placeholder="@perfil" />
+        </Field>
+        <Field
+          label="Sigla no card"
+          error={form.errors.monogram}
+          hint={`Aparece no lugar da foto enquanto não houver uma. Vazio = iniciais do nome (${initials(v.name) || "—"}).`}
+        >
+          <input
+            className="input uppercase"
+            value={v.monogram}
+            onChange={(e) => form.set("monogram", e.target.value.toUpperCase())}
+            maxLength={3}
+            placeholder={initials(v.name)}
+          />
         </Field>
         <Toggle checked={v.published} onChange={(p) => form.set("published", p)} label="Exibir no site" showLabel />
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">

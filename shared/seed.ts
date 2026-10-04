@@ -32,9 +32,9 @@ export const SEED_SETTINGS = {
   siteUrl: "https://eclipserock.com.br",
 };
 
-export const SEED_MEMBERS = [
-  { name: "Isabella", instagram: "itsbellaland" },
-  { name: "Mauro", instagram: "mam.filho" },
-  { name: "Mamute", instagram: "mamute.ferreira" },
-  { name: "Rodrigo", instagram: "rodrigodi" },
+export const SEED_MEMBERS: { name: string; instagram: string; monogram: string | null }[] = [
+  { name: "Isabella", instagram: "itsbellaland", monogram: null },
+  { name: "Mauro", instagram: "mam.filho", monogram: "MA" },
+  { name: "Mamute", instagram: "mamute.ferreira", monogram: "MM" },
+  { name: "Rodrigo", instagram: "rodrigodi", monogram: null },
 ];

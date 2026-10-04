@@ -214,6 +214,15 @@ const migrations: { name: string; sql: string }[] = [
       UPDATE band_members SET name = 'Rodrigo', updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE name = 'Rodrigo Di';
     `,
   },
+  {
+    // Sigla do card sem foto, editável no painel. Mauro e Mamute começariam ambos com "M".
+    name: "007_member_monogram",
+    sql: `
+      ALTER TABLE band_members ADD COLUMN monogram TEXT;
+      UPDATE band_members SET monogram = 'MA' WHERE name = 'Mauro';
+      UPDATE band_members SET monogram = 'MM' WHERE name = 'Mamute';
+    `,
+  },
 ];
 
 export function openDb(file = path.join(config.dataDir, "eclipse-rock.sqlite")): DB {
