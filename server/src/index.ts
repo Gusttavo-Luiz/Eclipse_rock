@@ -3,7 +3,7 @@ import { bootstrapAdmin } from "./bootstrap";
 import { assertProductionConfig, config } from "./config";
 import { openDb } from "./db";
 import { createMailer } from "./mailer";
-import { seedMemberPhotos } from "./seedPhotos";
+import { seedPhotos } from "./seedPhotos";
 
 assertProductionConfig();
 const db = openDb();
@@ -24,7 +24,7 @@ const server = app.listen(config.port, () => {
     );
   }
   void bootstrapAdmin(db, mailer);
-  seedMemberPhotos(db).catch((err) => console.error("[conteúdo inicial] falha ao importar fotos:", err));
+  seedPhotos(db).catch((err) => console.error("[conteúdo inicial] falha ao importar fotos:", err));
 });
 
 function shutdown() {

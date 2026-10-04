@@ -41,11 +41,14 @@ export function AboutSection({ settings }: { settings: PublicSettings }) {
           {settings.aboutImage ? (
             <figure className="relative">
               <div className="absolute -inset-3 -z-10 rounded-[28px] bg-gradient-to-br from-violet/40 via-transparent to-magenta/30 blur-2xl" aria-hidden />
+              {/* Vertical: recorte 4:5. Horizontal (ex.: foto do grupo): proporção original, sem cortar ninguém. */}
               <Img
                 image={settings.aboutImage}
-                alt={`${settings.bandName} ao vivo`}
+                alt={`Foto da banda ${settings.bandName}`}
                 sizes="(min-width: 1024px) 560px, 100vw"
-                className="aspect-[4/5] w-full rounded-[var(--radius-panel)] object-cover"
+                className={`w-full rounded-[var(--radius-panel)] object-cover ${
+                  settings.aboutImage.width > settings.aboutImage.height ? "" : "aspect-[4/5]"
+                }`}
               />
             </figure>
           ) : (

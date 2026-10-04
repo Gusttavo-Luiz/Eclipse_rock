@@ -12,7 +12,12 @@ O site de referência (`eclipse-rock-hub.base44.app`) é uma aplicação renderi
   - nome, identificação musical e descrição, vindos dos metadados da referência;
   - Instagram `@eclipserockoficial`;
   - os quatro integrantes com seus perfis: Isabella, Mauro, Mamute e Rodrigo.
-- **Fotos dos integrantes** enviadas pela banda (recortadas em 4:5, em `server/seed/members/`): importadas automaticamente na primeira subida do servidor, pelo mesmo processamento das fotos enviadas no painel. A importação acontece uma vez só: depois, trocar ou remover a foto no painel vale de vez.
+- **Fotos enviadas pela banda**, importadas automaticamente na primeira subida do servidor, pelo mesmo processamento das fotos enviadas no painel:
+  - integrantes (recortadas em 4:5, em `server/seed/members/`);
+  - galeria, com texto alternativo e categorias "Ao vivo" e "Banda" (em `server/seed/gallery/`);
+  - a foto do grupo também na seção "A banda" (fotos horizontais aparecem inteiras, sem recorte).
+
+  A importação acontece uma vez só: depois, trocar ou remover fotos no painel vale de vez.
 - **Nada foi inventado.** Não há shows, telefones, e-mails, instrumentos ou datas de fundação pré-cadastrados.
 - O texto "A banda" foi redigido apenas com os fatos confirmados e pode ser substituído no painel, em **Configurações**.
 - **Rodrigo Rockfest:** cadastre em **Shows → Novo show** depois de validar o endereço e o link oficial da Sympla.
@@ -98,8 +103,9 @@ server/
   src/seo.ts            meta tags, Open Graph, JSON-LD, sitemap, robots
   src/cli.ts            criação de administrador
   src/bootstrap.ts      primeiro administrador por ADMIN_EMAIL (convite na primeira subida)
-  src/seedPhotos.ts     importa as fotos do conteúdo inicial (server/seed/members) uma única vez
+  src/seedPhotos.ts     importa as fotos do conteúdo inicial (server/seed) uma única vez
   seed/members/         fotos dos integrantes enviadas pela banda
+  seed/gallery/         fotos da galeria enviadas pela banda
   tests/api.test.ts
   tests/notifications.test.ts
   tests/passwordReset.test.ts
@@ -320,7 +326,7 @@ O servidor roda como **uma instância**. Os limites de requisição ficam em mem
    - revise o texto "A banda".
 2. **Integrantes:** instrumento/função **quando confirmados** (as fotos já vêm do conteúdo inicial).
 3. **Shows:** cadastre os shows confirmados, como o Rodrigo Rockfest com o link oficial da Sympla.
-4. **Galeria e Vídeos:** fotos reais e vídeos oficiais do YouTube.
+4. **Galeria e Vídeos:** mais fotos reais (as primeiras já vêm do conteúdo inicial) e vídeos oficiais do YouTube.
 5. **Usuários:** crie contas de **editor** para quem só atualiza conteúdo.
 
 ## Integrações pendentes / próximos passos

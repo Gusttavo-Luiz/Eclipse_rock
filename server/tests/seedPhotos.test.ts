@@ -6,7 +6,7 @@ import request from "supertest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../src/app";
 import { openDb, type DB } from "../src/db";
-import { seedMemberPhotos } from "../src/seedPhotos";
+import { seedGalleryPhotos, seedMemberPhotos } from "../src/seedPhotos";
 
 const dbs: DB[] = [];
 afterEach(() => {
@@ -81,5 +81,34 @@ describe("fotos do conteúdo inicial", () => {
     expect(await seedMemberPhotos(db, dir)).toBe(1);
     expect(photos(db).Mauro).not.toBeNull();
     fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("galeria: importa as 5 fotos na ordem, com texto alternativo e categoria, e usa a foto do grupo em \"A banda\"", async () => {
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    const db = fresh();
+    expect(await seedGalleryPhotos(db)).toBe(5);
+    const app = createApp(db, { mailer: null });
+    const gallery = (await request(app).get("/api/public/gallery")).body as { alt: string; category: string; image: { id: number; width: number; height: number } }[];
+    expect(gallery.map((g) => g.category)).toEqual(["Ao vivo", "Ao vivo", "Ao vivo", "Ao vivo", "Banda"]);
+    expect(gallery.every((g) => g.alt.length > 10)).toBe(true);
+    const settings = (await request(app).get("/api/public/settings")).body as { aboutImage: { id: number; width: number; height: number } };
+    expect(settings.aboutImage.id).toBe(gallery[4].image.id);
+    expect(settings.aboutImage.width).toBeGreaterThan(settings.aboutImage.height); // foto do grupo, horizontal
+
+    // uma vez só: não duplica nem recoloca
+    db.prepare("DELETE FROM gallery_images WHERE category = 'Banda'").run();
+    expect(await seedGalleryPhotos(db)).toBe(0);
+    expect((db.prepare("SELECT COUNT(*) n FROM gallery_images").get() as { n: number }).n).toBe(4);
+  });
+
+  it("galeria: não troca a foto de \"A banda\" já escolhida no painel", async () => {
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    const db = fresh();
+    db.prepare("INSERT INTO uploads (key, width, height, variants, bytes) VALUES ('abc', 400, 500, '[400]', 1)").run();
+    const row = db.prepare("SELECT value FROM site_settings WHERE key = 'site'").get() as { value: string };
+    db.prepare("UPDATE site_settings SET value = ? WHERE key = 'site'").run(JSON.stringify({ ...JSON.parse(row.value), aboutImageId: 1 }));
+    await seedGalleryPhotos(db);
+    const after = JSON.parse((db.prepare("SELECT value FROM site_settings WHERE key = 'site'").get() as { value: string }).value);
+    expect(after.aboutImageId).toBe(1);
   });
 });

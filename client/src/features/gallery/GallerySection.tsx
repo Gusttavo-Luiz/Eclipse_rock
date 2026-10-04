@@ -48,7 +48,7 @@ export function GallerySection({ images }: { images: GalleryImage[] }) {
                   image={img.image}
                   alt=""
                   sizes={i === 0 && visible.length >= 5 ? "(min-width: 1024px) 600px, 100vw" : "(min-width: 1024px) 300px, 50vw"}
-                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04] motion-reduce:transform-none"
+                  className="h-full w-full object-cover object-[center_25%] transition-transform duration-500 group-hover:scale-[1.04] motion-reduce:transform-none"
                 />
                 <span className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-moon/10 transition group-hover:ring-violet-soft/60" />
               </button>
