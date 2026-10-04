@@ -86,6 +86,13 @@ export const SEED_GALLERY_BATCHES: { marker: string; photos: SeedGalleryPhoto[] 
       },
     ],
   },
+  {
+    marker: "seed:gallery_v4",
+    photos: [
+      { file: "mamute-telao.webp", alt: "Mamute tocando baixo no palco, com um telão ao fundo", category: "Ao vivo" },
+      { file: "mamute-luz-verde.webp", alt: "Mamute concentrado no baixo sob luz verde", category: "Ao vivo" },
+    ],
+  },
 ];
 
 /** Todas as fotos da galeria, na ordem de exibição. */

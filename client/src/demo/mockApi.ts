@@ -20,6 +20,8 @@ import mauroPalco from "../../../server/seed/gallery/mauro-palco.webp";
 import rodrigoEclipse from "../../../server/seed/gallery/rodrigo-eclipse.webp";
 import rodrigoRock from "../../../server/seed/gallery/rodrigo-rock.webp";
 import isabellaMicrofone from "../../../server/seed/gallery/isabella-microfone.webp";
+import mamuteLuzVerde from "../../../server/seed/gallery/mamute-luz-verde.webp";
+import mamuteTelao from "../../../server/seed/gallery/mamute-telao.webp";
 import { ApiError } from "../lib/api";
 
 export const DEMO_NOTICE =
@@ -50,6 +52,8 @@ const PHOTOS: Record<string, { src: string; width: number; height: number }> = {
   "isabella-pb.webp": { src: isabellaPb, width: 424, height: 654 },
   "rodrigo-eclipse.webp": { src: rodrigoEclipse, width: 432, height: 653 },
   "isabella-microfone.webp": { src: isabellaMicrofone, width: 374, height: 666 },
+  "mamute-telao.webp": { src: mamuteTelao, width: 419, height: 634 },
+  "mamute-luz-verde.webp": { src: mamuteLuzVerde, width: 410, height: 618 },
 };
 
 function photo(file: string | null, id: number): ImageRef | null {
