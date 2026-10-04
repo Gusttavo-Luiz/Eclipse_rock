@@ -33,8 +33,8 @@ export const SEED_SETTINGS = {
 };
 
 export const SEED_MEMBERS = [
-  { name: "Isabella Land", instagram: "itsbellaland" },
-  { name: "M.A.M. Filho", instagram: "mam.filho" },
-  { name: "Mamute Ferreira", instagram: "mamute.ferreira" },
-  { name: "Rodrigo Di", instagram: "rodrigodi" },
+  { name: "Isabella", instagram: "itsbellaland" },
+  { name: "Mauro", instagram: "mam.filho" },
+  { name: "Mamute", instagram: "mamute.ferreira" },
+  { name: "Rodrigo", instagram: "rodrigodi" },
 ];

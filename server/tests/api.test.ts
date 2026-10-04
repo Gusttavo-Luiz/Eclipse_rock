@@ -47,10 +47,10 @@ describe("conteúdo inicial", () => {
     expect(res.body.settings.whatsapp).toBeNull();
     expect(res.body.settings.contactEmail).toBeNull();
     expect(res.body.members.map((m: { name: string }) => m.name)).toEqual([
-      "Isabella Land",
-      "M.A.M. Filho",
-      "Mamute Ferreira",
-      "Rodrigo Di",
+      "Isabella",
+      "Mauro",
+      "Mamute",
+      "Rodrigo",
     ]);
     expect(res.body.members.every((m: { role: string | null }) => m.role === null)).toBe(true);
     expect(res.body.upcoming).toEqual([]);

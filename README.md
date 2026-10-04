@@ -11,7 +11,7 @@ O site de referência (`eclipse-rock-hub.base44.app`) é uma aplicação renderi
 - **Conteúdo pré-carregado** (apenas o que estava confirmado):
   - nome, identificação musical e descrição, vindos dos metadados da referência;
   - Instagram `@eclipserockoficial`;
-  - os quatro integrantes com seus perfis: Isabella Land, M.A.M. Filho, Mamute Ferreira e Rodrigo Di.
+  - os quatro integrantes com seus perfis: Isabella, Mauro, Mamute e Rodrigo.
 - **Nada foi inventado.** Não há shows, telefones, e-mails, instrumentos, datas de fundação ou fotos pré-cadastrados.
 - O texto "A banda" foi redigido apenas com os fatos confirmados e pode ser substituído no painel, em **Configurações**.
 - **Rodrigo Rockfest:** cadastre em **Shows → Novo show** depois de validar o endereço e o link oficial da Sympla.

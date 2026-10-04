@@ -203,6 +203,17 @@ const migrations: { name: string; sql: string }[] = [
       ALTER TABLE users ADD COLUMN invite_pending INTEGER NOT NULL DEFAULT 0 CHECK (invite_pending IN (0,1));
     `,
   },
+  {
+    // Nomes artísticos confirmados pela banda. Só troca se o nome ainda for o do conteúdo inicial
+    // (não sobrescreve o que já tiver sido editado no painel).
+    name: "006_member_stage_names",
+    sql: `
+      UPDATE band_members SET name = 'Isabella', updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE name = 'Isabella Land';
+      UPDATE band_members SET name = 'Mauro', updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE name = 'M.A.M. Filho';
+      UPDATE band_members SET name = 'Mamute', updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE name = 'Mamute Ferreira';
+      UPDATE band_members SET name = 'Rodrigo', updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE name = 'Rodrigo Di';
+    `,
+  },
 ];
 
 export function openDb(file = path.join(config.dataDir, "eclipse-rock.sqlite")): DB {
