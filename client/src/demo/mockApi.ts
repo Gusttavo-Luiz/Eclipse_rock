@@ -19,6 +19,7 @@ import isabellaPb from "../../../server/seed/gallery/isabella-pb.webp";
 import mauroPalco from "../../../server/seed/gallery/mauro-palco.webp";
 import rodrigoEclipse from "../../../server/seed/gallery/rodrigo-eclipse.webp";
 import rodrigoRock from "../../../server/seed/gallery/rodrigo-rock.webp";
+import isabellaMicrofone from "../../../server/seed/gallery/isabella-microfone.webp";
 import { ApiError } from "../lib/api";
 
 export const DEMO_NOTICE =
@@ -48,6 +49,7 @@ const PHOTOS: Record<string, { src: string; width: number; height: number }> = {
   "rodrigo-rock.webp": { src: rodrigoRock, width: 672, height: 641 },
   "isabella-pb.webp": { src: isabellaPb, width: 424, height: 654 },
   "rodrigo-eclipse.webp": { src: rodrigoEclipse, width: 432, height: 653 },
+  "isabella-microfone.webp": { src: isabellaMicrofone, width: 374, height: 666 },
 };
 
 function photo(file: string | null, id: number): ImageRef | null {

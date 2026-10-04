@@ -110,7 +110,7 @@ describe("fotos do conteúdo inicial", () => {
     db.prepare("INSERT INTO schema_migrations (name) VALUES ('seed:gallery_v1')").run();
     db.prepare("INSERT INTO uploads (key, width, height, variants, bytes) VALUES ('abc', 400, 500, '[400]', 1)").run();
     db.prepare("INSERT INTO gallery_images (upload_id, alt, sort_order) VALUES (1, 'Foto enviada pelo painel', 7)").run();
-    const second = SEED_GALLERY_BATCHES[1].photos;
+    const second = SEED_GALLERY_BATCHES.slice(1).flatMap((b) => b.photos); // todos os lotes depois do 1º
     expect(await seedGalleryPhotos(db)).toBe(second.length);
     const rows = db.prepare("SELECT alt FROM gallery_images ORDER BY sort_order, id").all() as { alt: string }[];
     expect(rows.map((r) => r.alt)).toEqual(["Foto enviada pelo painel", ...second.map((g) => g.alt)]);

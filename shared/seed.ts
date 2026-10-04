@@ -76,6 +76,16 @@ export const SEED_GALLERY_BATCHES: { marker: string; photos: SeedGalleryPhoto[] 
       { file: "rodrigo-eclipse.webp", alt: "Rodrigo sorrindo na bateria sob luz azul, com camiseta da Eclipse", category: "Ao vivo" },
     ],
   },
+  {
+    marker: "seed:gallery_v3",
+    photos: [
+      {
+        file: "isabella-microfone.webp",
+        alt: "Isabella sorrindo no palco com o fio do microfone erguido acima da cabeça",
+        category: "Ao vivo",
+      },
+    ],
+  },
 ];
 
 /** Todas as fotos da galeria, na ordem de exibição. */
