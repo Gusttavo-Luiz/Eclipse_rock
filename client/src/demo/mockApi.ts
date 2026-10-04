@@ -4,7 +4,11 @@
  * Só entra no bundle quando VITE_DEMO=1.
  */
 import { SEED_MEMBERS, SEED_SETTINGS } from "../../../shared/seed";
-import type { BandMember, PublicSettings } from "../../../shared/types";
+import type { BandMember, ImageRef, PublicSettings } from "../../../shared/types";
+import isabella from "../../../server/seed/members/isabella.webp";
+import mamute from "../../../server/seed/members/mamute.webp";
+import mauro from "../../../server/seed/members/mauro.webp";
+import rodrigo from "../../../server/seed/members/rodrigo.webp";
 import { ApiError } from "../lib/api";
 
 export const DEMO_NOTICE =
@@ -18,13 +22,26 @@ function settings(): PublicSettings {
   return { ...s, logo: null, heroImage: null, aboutImage: null, ogImage: null, siteUrl: siteUrl() };
 }
 
+// Mesmas fotos que o servidor importa na primeira subida (dimensões dos arquivos em server/seed/members).
+const PHOTOS: Record<string, { src: string; width: number; height: number }> = {
+  "isabella.webp": { src: isabella, width: 524, height: 655 },
+  "mauro.webp": { src: mauro, width: 524, height: 655 },
+  "mamute.webp": { src: mamute, width: 426, height: 532 },
+  "rodrigo.webp": { src: rodrigo, width: 428, height: 535 },
+};
+
+function photo(file: string | null, id: number): ImageRef | null {
+  const p = file ? PHOTOS[file] : undefined;
+  return p ? { id, width: p.width, height: p.height, src: p.src, srcset: `${p.src} ${p.width}w` } : null;
+}
+
 const members: BandMember[] = SEED_MEMBERS.map((m, i) => ({
   id: i + 1,
   name: m.name,
   role: null,
   instagram: m.instagram,
   monogram: m.monogram,
-  photo: null,
+  photo: photo(m.photo, i + 1),
   photoId: null,
   sortOrder: i + 1,
   published: true,

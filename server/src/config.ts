@@ -30,6 +30,8 @@ export const config = {
   appSecret: env.APP_SECRET ?? (isProd ? "" : "dev-only-secret-change-me"),
   maxUploadMb: Number(env.MAX_UPLOAD_MB ?? 10),
   clientDist: path.resolve(env.CLIENT_DIST ?? "dist/client"),
+  /** Arquivos do conteúdo inicial (ex.: fotos dos integrantes) importados na primeira subida. */
+  seedDir: path.resolve(env.SEED_DIR ?? "server/seed"),
   /** E-mail transacional (avisos de novas solicitações). Sem provedor configurado, nada é enviado. */
   mail: {
     /** Remetente, ex.: "Eclipse Rock <avisos@eclipserock.com.br>". O domínio precisa estar verificado no provedor. */

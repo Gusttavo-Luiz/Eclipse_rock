@@ -12,7 +12,8 @@ O site de referência (`eclipse-rock-hub.base44.app`) é uma aplicação renderi
   - nome, identificação musical e descrição, vindos dos metadados da referência;
   - Instagram `@eclipserockoficial`;
   - os quatro integrantes com seus perfis: Isabella, Mauro, Mamute e Rodrigo.
-- **Nada foi inventado.** Não há shows, telefones, e-mails, instrumentos, datas de fundação ou fotos pré-cadastrados.
+- **Fotos dos integrantes** enviadas pela banda (recortadas em 4:5, em `server/seed/members/`): importadas automaticamente na primeira subida do servidor, pelo mesmo processamento das fotos enviadas no painel. A importação acontece uma vez só: depois, trocar ou remover a foto no painel vale de vez.
+- **Nada foi inventado.** Não há shows, telefones, e-mails, instrumentos ou datas de fundação pré-cadastrados.
 - O texto "A banda" foi redigido apenas com os fatos confirmados e pode ser substituído no painel, em **Configurações**.
 - **Rodrigo Rockfest:** cadastre em **Shows → Novo show** depois de validar o endereço e o link oficial da Sympla.
 - **Seções que se adaptam:** Galeria e Vídeos só aparecem (inclusive no menu) quando houver conteúdo publicado. Os botões de WhatsApp e e-mail só aparecem quando esses contatos forem configurados.
@@ -97,6 +98,8 @@ server/
   src/seo.ts            meta tags, Open Graph, JSON-LD, sitemap, robots
   src/cli.ts            criação de administrador
   src/bootstrap.ts      primeiro administrador por ADMIN_EMAIL (convite na primeira subida)
+  src/seedPhotos.ts     importa as fotos do conteúdo inicial (server/seed/members) uma única vez
+  seed/members/         fotos dos integrantes enviadas pela banda
   tests/api.test.ts
   tests/notifications.test.ts
   tests/passwordReset.test.ts
@@ -315,7 +318,7 @@ O servidor roda como **uma instância**. Os limites de requisição ficam em mem
    - preencha o WhatsApp comercial e o e-mail;
    - em "Avisos de novas solicitações", informe quem recebe os avisos e envie um e-mail de teste;
    - revise o texto "A banda".
-2. **Integrantes:** fotos oficiais e instrumento/função **quando confirmados**.
+2. **Integrantes:** instrumento/função **quando confirmados** (as fotos já vêm do conteúdo inicial).
 3. **Shows:** cadastre os shows confirmados, como o Rodrigo Rockfest com o link oficial da Sympla.
 4. **Galeria e Vídeos:** fotos reais e vídeos oficiais do YouTube.
 5. **Usuários:** crie contas de **editor** para quem só atualiza conteúdo.

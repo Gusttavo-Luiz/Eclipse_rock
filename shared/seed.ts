@@ -32,9 +32,10 @@ export const SEED_SETTINGS = {
   siteUrl: "https://eclipserock.com.br",
 };
 
-export const SEED_MEMBERS: { name: string; instagram: string; monogram: string | null }[] = [
-  { name: "Isabella", instagram: "itsbellaland", monogram: null },
-  { name: "Mauro", instagram: "mam.filho", monogram: "MA" },
-  { name: "Mamute", instagram: "mamute.ferreira", monogram: "MM" },
-  { name: "Rodrigo", instagram: "rodrigodi", monogram: null },
+/** photo: arquivo em server/seed/members/ (fotos enviadas pela banda, já recortadas em 4:5). */
+export const SEED_MEMBERS: { name: string; instagram: string; monogram: string | null; photo: string | null }[] = [
+  { name: "Isabella", instagram: "itsbellaland", monogram: null, photo: "isabella.webp" },
+  { name: "Mauro", instagram: "mam.filho", monogram: "MA", photo: "mauro.webp" },
+  { name: "Mamute", instagram: "mamute.ferreira", monogram: "MM", photo: "mamute.webp" },
+  { name: "Rodrigo", instagram: "rodrigodi", monogram: null, photo: "rodrigo.webp" },
 ];

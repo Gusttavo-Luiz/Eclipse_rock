@@ -12,6 +12,7 @@ ENV NODE_ENV=production PORT=3001 DATA_DIR=/data
 COPY --from=build /app/package.json ./
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
+COPY --from=build /app/server/seed ./server/seed
 RUN mkdir -p /data && chown node:node /data
 USER node
 VOLUME ["/data"]
